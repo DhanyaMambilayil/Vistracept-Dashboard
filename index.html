@@ -235,8 +235,9 @@ footer a{color:var(--teal);cursor:pointer;text-decoration:underline;}
         </div>
       </div>
       <div class="series-toggles">
-        <label><input type="checkbox" id="toggleNew" checked> New visits</label>
-        <label><input type="checkbox" id="toggleFollowUp" checked> Follow-up visits</label>
+        <label><input type="checkbox" id="toggleTotal" checked> Total visits</label>
+        <label><input type="checkbox" id="toggleNew"> New visits</label>
+        <label><input type="checkbox" id="toggleFollowUp"> Follow-up visits</label>
       </div>
       <div class="chart-wrap tall"><canvas id="trendChart"></canvas></div>
     </div>
@@ -334,8 +335,9 @@ var state = {
   filters: { district:'ALL', category:'ALL', status:'ALL', visit:'ALL' },
   alertTab: 'ALL',
   trendRange: 'weekly',
-  showNew: true,
-  showFollowUp: true,
+  showTotal: true,
+  showNew: false,
+  showFollowUp: false,
   sort: { field:'nextVisitDate', dir:'asc' },
   page: 1,
   lastMetrics: null
@@ -700,7 +702,7 @@ function renderTrendChart(m){
     type: 'line',
     data: { labels: bucket.labels, datasets: [
       {
-        label:'Total visits', data: bucket.total,
+        label:'Total visits', data: bucket.total, hidden: !state.showTotal,
         borderColor:'#2E4372', backgroundColor:'rgba(46,67,114,.10)',
         fill:false, tension:0.3, pointRadius:3, pointBackgroundColor:'#2E4372', pointBorderColor:'#fff', pointBorderWidth:1.5, borderWidth:2.5
       },
@@ -941,6 +943,10 @@ document.querySelectorAll('.panel-head .tabs .tab-btn').forEach(function(btn){
   });
 });
 
+document.getElementById('toggleTotal').addEventListener('change', function(e){
+  state.showTotal = e.target.checked;
+  if(state.lastMetrics) renderTrendChart(state.lastMetrics);
+});
 document.getElementById('toggleNew').addEventListener('change', function(e){
   state.showNew = e.target.checked;
   if(state.lastMetrics) renderTrendChart(state.lastMetrics);
