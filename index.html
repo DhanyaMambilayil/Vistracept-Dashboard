@@ -220,11 +220,10 @@ footer a{color:var(--teal);cursor:pointer;text-decoration:underline;}
       <div class="panel-head">
         <div>
           <h2>Visit productivity</h2>
-          <div class="panel-sub" style="margin-left:15px;">Visits recorded since 1 September</div>
+          <div class="panel-sub" style="margin-left:15px;">Day-by-day for the last week, or totals by month (Sep–Dec)</div>
         </div>
         <div class="tabs">
-          <span class="tab-btn active" data-range="daily">Daily</span>
-          <span class="tab-btn" data-range="weekly">Weekly</span>
+          <span class="tab-btn active" data-range="weekly">Weekly</span>
           <span class="tab-btn" data-range="monthly">Monthly</span>
         </div>
       </div>
@@ -310,7 +309,7 @@ var state = {
   usingSample: true,
   filters: { district:'ALL', category:'ALL', status:'ALL', visit:'ALL' },
   alertTab: 'ALL',
-  trendRange: 'daily',
+  trendRange: 'weekly',
   sort: { field:'nextVisitDate', dir:'asc' },
   page: 1,
   lastMetrics: null
@@ -410,20 +409,14 @@ function seasonStart(today){ return new Date(today.getFullYear(), 8, 1); } // 1 
 
 function buildTrendBuckets(visitedRows, mode, today){
   var labels = [], keys = [], counts = {};
-  var start = seasonStart(today);
-  if(mode === 'daily'){
-    var dayCount = Math.max(1, Math.round((startOfDay(today) - start) / 86400000) + 1);
-    for(var i=dayCount-1;i>=0;i--){ var d=new Date(today); d.setDate(d.getDate()-i); var k=d.toDateString(); keys.push(k); labels.push(shortDate(d)); counts[k]=0; }
+  if(mode === 'weekly'){
+    for(var i=6;i>=0;i--){ var d=new Date(today); d.setDate(d.getDate()-i); var k=d.toDateString(); keys.push(k); labels.push(shortDate(d)); counts[k]=0; }
     visitedRows.forEach(function(r){ var k=r.visitDate.toDateString(); if(k in counts) counts[k]++; });
-  } else if(mode === 'weekly'){
-    var wStart = startOfWeek(start);
-    var weekCount = Math.max(1, Math.round((startOfWeek(today) - wStart) / (7*86400000)) + 1);
-    for(var w=weekCount-1; w>=0; w--){ var ws=new Date(startOfWeek(today)); ws.setDate(ws.getDate()-7*w); var k=ws.toDateString(); keys.push(k); labels.push(shortDate(ws)); counts[k]=0; }
-    visitedRows.forEach(function(r){ var ws=startOfWeek(r.visitDate); var k=ws.toDateString(); if(k in counts) counts[k]++; });
   } else {
-    var monthCount = Math.max(1, (today.getFullYear()-start.getFullYear())*12 + (today.getMonth()-start.getMonth()) + 1);
-    for(var mo=monthCount-1; mo>=0; mo--){
-      var md = new Date(today.getFullYear(), today.getMonth()-mo, 1);
+    var start = seasonStart(today);
+    var endYear = start.getFullYear();
+    for(var mo=8; mo<=11; mo++){ // September through December
+      var md = new Date(endYear, mo, 1);
       var k = md.getFullYear()+'-'+md.getMonth();
       keys.push(k); labels.push(md.toLocaleDateString('en-GB',{month:'short',year:'2-digit'})); counts[k]=0;
     }
@@ -634,8 +627,8 @@ function renderConvertedChart(m){
   charts.converted = new Chart(ctx, {
     type:'bar',
     data:{ labels:b.labels, datasets:[
-      { label:'Visited', data:b.visited, backgroundColor:'#E8A33D', borderRadius:4, maxBarThickness:26 },
-      { label:'Converted', data:b.converted, backgroundColor:'#1E7145', borderRadius:4, maxBarThickness:26 }
+      { label:'Visited', data:b.visited, backgroundColor:'#E8A33D', barPercentage:1.0, categoryPercentage:0.6 },
+      { label:'Converted', data:b.converted, backgroundColor:'#1E7145', barPercentage:1.0, categoryPercentage:0.6 }
     ]},
     options:{
       responsive:true, maintainAspectRatio:false,
