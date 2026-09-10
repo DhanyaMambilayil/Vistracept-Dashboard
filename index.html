@@ -222,28 +222,30 @@ footer a{color:var(--teal);cursor:pointer;text-decoration:underline;}
     <div class="alert-list" id="alertList"></div>
   </div>
 
-  <div class="panel">
-    <div class="panel-head">
-      <div>
-        <h2>Visit productivity</h2>
-        <div class="panel-sub" style="margin-left:15px;">New, follow-up &amp; total visits — day-by-day for the last week, or totals by month (Sep–Dec)</div>
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>Visit productivity</h2>
+          <div class="panel-sub" style="margin-left:15px;">New, follow-up &amp; total visits — day-by-day for the last week, or totals by month (Sep–Dec)</div>
+        </div>
+        <div class="tabs">
+          <span class="tab-btn active" data-range="weekly">Weekly</span>
+          <span class="tab-btn" data-range="monthly">Monthly</span>
+        </div>
       </div>
-      <div class="tabs">
-        <span class="tab-btn active" data-range="weekly">Weekly</span>
-        <span class="tab-btn" data-range="monthly">Monthly</span>
+      <div class="series-toggles">
+        <label><input type="checkbox" id="toggleNew" checked> New visits</label>
+        <label><input type="checkbox" id="toggleFollowUp" checked> Follow-up visits</label>
       </div>
+      <div class="chart-wrap tall"><canvas id="trendChart"></canvas></div>
     </div>
-    <div class="series-toggles">
-      <label><input type="checkbox" id="toggleNew" checked> New visits</label>
-      <label><input type="checkbox" id="toggleFollowUp" checked> Follow-up visits</label>
-    </div>
-    <div class="chart-wrap tall"><canvas id="trendChart"></canvas></div>
-  </div>
 
-  <div class="panel">
-    <h2>Visited vs. converted</h2>
-    <div class="panel-sub" style="margin-left:15px;">September through December — converted means Status is "Sales Successful"</div>
-    <div class="chart-wrap tall"><canvas id="convertedChart"></canvas></div>
+    <div class="panel">
+      <h2>Visited vs. converted</h2>
+      <div class="panel-sub" style="margin-left:15px;">September through December — converted means Status is "Sales Successful"</div>
+      <div class="chart-wrap tall"><canvas id="convertedChart"></canvas></div>
+    </div>
   </div>
 
   <div class="filters-bar table-filters">
