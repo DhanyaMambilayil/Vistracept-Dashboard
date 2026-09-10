@@ -448,9 +448,12 @@ function rawCsvRowToCanon(raw){
   return finalizeRow(obj);
 }
 
+function ingestPlanogramRows(rawObjects){
+  return rawObjects.map(rawCsvRowToCanon).filter(function(r){ return r.company || r.category; });
+}
 function ingestCSV(text){
   var parsed = Papa.parse(text, { header:true, skipEmptyLines:true });
-  return parsed.data.map(rawCsvRowToCanon).filter(function(r){ return r.company || r.category; });
+  return ingestPlanogramRows(parsed.data);
 }
 
 function computeVisitTypes(rows){
@@ -468,9 +471,8 @@ function computeVisitTypes(rows){
    every later row for that same company = Follow-up. Computed automatically.
    Supports either a single "Date" column, or split Visiting Year/Month/date columns
    (same convention as the Planogram sheet). */
-function ingestVisitLog(text){
-  var parsed = Papa.parse(text, { header:true, skipEmptyLines:true });
-  var rows = parsed.data.map(function(raw){
+function ingestVisitLogRows(rawObjects){
+  var rows = rawObjects.map(function(raw){
     var obj = {};
     Object.keys(raw).forEach(function(k){
       var canon = VISIT_LOG_ALIAS[normalizeHeader(k)];
@@ -486,9 +488,61 @@ function ingestVisitLog(text){
       remarks: (obj.remarks || '').trim()
     };
   }).filter(function(r){ return r.date && r.company; });
-
   return computeVisitTypes(rows);
 }
+function ingestVisitLog(text){
+  var parsed = Papa.parse(text, { header:true, skipEmptyLines:true });
+  return ingestVisitLogRows(parsed.data);
+}
+
+/* ===================== Google Sheets live loading (CORS-safe) =====================
+   Google's published-CSV endpoint never sends the Access-Control-Allow-Origin header,
+   so browser fetch()/XHR to it is blocked by CORS from any third-party page — this is
+   a well-documented Google limitation, not fixable from our side with fetch options.
+   The gviz/tq endpoint supports a classic JSONP callback instead, which loads via a
+   <script> tag and is therefore not subject to CORS at all. We use that exclusively. */
+function loadSheetViaJSONP(spreadsheetId, gid, timeoutMs){
+  return new Promise(function(resolve, reject){
+    var cbName = '__gvizCb_' + Math.random().toString(36).slice(2);
+    var script = document.createElement('script');
+    var done = false;
+    function cleanup(){ delete window[cbName]; if(script.parentNode) script.parentNode.removeChild(script); }
+    window[cbName] = function(json){
+      if(done) return; done = true;
+      cleanup();
+      resolve(json);
+    };
+    script.onerror = function(){
+      if(done) return; done = true;
+      cleanup();
+      reject(new Error('Could not load the sheet (check it is shared as "Anyone with the link can view")'));
+    };
+    script.src = 'https://docs.google.com/spreadsheets/d/' + spreadsheetId + '/gviz/tq?gid=' + gid
+      + '&tqx=out:json;responseHandler:' + cbName;
+    document.head.appendChild(script);
+    setTimeout(function(){
+      if(done) return; done = true;
+      cleanup();
+      reject(new Error('Timed out loading the sheet'));
+    }, timeoutMs || 12000);
+  });
+}
+
+function gvizTableToRawRows(table){
+  var headers = (table.cols || []).map(function(c){ return (c.label || c.id || '').toString(); });
+  return (table.rows || []).map(function(row){
+    var obj = {};
+    (row.c || []).forEach(function(cell, i){
+      var h = headers[i];
+      if(!h) return;
+      var v = cell ? cell.v : null;
+      obj[h] = (v === null || v === undefined) ? '' : ('' + v);
+    });
+    return obj;
+  });
+}
+
+
 
 function finalizeSeedVisitLogRow(obj){
   return {
@@ -1005,15 +1059,17 @@ function updateDataStatus(live, count, err){
   }
 }
 
-async function fetchSheet(url){
+async function fetchSheet(gid){
   try{
-    var res = await fetch(url, { cache:'no-store' });
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    var text = await res.text();
-    var rows = ingestCSV(text);
-    if(!rows.length) throw new Error('no rows found — check the sheet is published as CSV');
+    var json = await loadSheetViaJSONP(SPREADSHEET_ID, gid);
+    if(json.status === 'error'){
+      var msg = (json.errors && json.errors[0] && json.errors[0].detailed_message) || 'sheet returned an error';
+      throw new Error(msg);
+    }
+    var rows = ingestPlanogramRows(gvizTableToRawRows(json.table));
+    if(!rows.length) throw new Error('no rows found — check the sheet is shared as "Anyone with the link can view"');
     setRows(rows, { sample:false });
-    state.sheetUrl = url;
+    state.sheetGid = gid;
     updateDataStatus(true, rows.length);
   }catch(e){
     state.lastError = e.message;
@@ -1021,15 +1077,17 @@ async function fetchSheet(url){
   }
 }
 
-async function fetchVisitLog(url){
-  if(!url) return;
-  state.visitLogUrl = url;
+async function fetchVisitLog(gid){
+  if(!gid) return;
+  state.visitLogGid = gid;
   try{
-    var res = await fetch(url, { cache:'no-store' });
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    var text = await res.text();
-    var rows = ingestVisitLog(text);
-    if(!rows.length) throw new Error('no rows found in Visit Log CSV');
+    var json = await loadSheetViaJSONP(SPREADSHEET_ID, gid);
+    if(json.status === 'error'){
+      var msg = (json.errors && json.errors[0] && json.errors[0].detailed_message) || 'sheet returned an error';
+      throw new Error(msg);
+    }
+    var rows = ingestVisitLogRows(gvizTableToRawRows(json.table));
+    if(!rows.length) throw new Error('no rows found in Visit Log');
     state.visitLog = rows;
     renderAll();
   }catch(e){
@@ -1039,9 +1097,9 @@ async function fetchVisitLog(url){
 
 /* ===================== Events ===================== */
 document.getElementById('refreshBtn').addEventListener('click', function(){
-  if(state.sheetUrl) fetchSheet(state.sheetUrl);
+  if(state.sheetGid) fetchSheet(state.sheetGid);
   else renderAll();
-  if(state.visitLogUrl) fetchVisitLog(state.visitLogUrl);
+  if(state.visitLogGid) fetchVisitLog(state.visitLogGid);
 });
 
 ['districtFilter','categoryFilter','statusFilter','visitFilter'].forEach(function(id){
@@ -1102,10 +1160,9 @@ document.getElementById('prevPage').addEventListener('click', function(){ if(sta
 document.getElementById('nextPage').addEventListener('click', function(){ state.page++; renderTable(getFilteredRows()); });
 
 /* ===================== Init ===================== */
-var DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQnRHPnTmun-kUmR5JkPd8_C4ROoKd2p917meUH83g5leixOnkoMBsM1pltFviSQhk9qqB04DCiirbB/pub?gid=1451909011&single=true&output=csv";
-// Set this once the "Visit Log" tab is published to web as CSV — the productivity chart
-// will automatically switch to using it (repeat visits to the same account included).
-var DEFAULT_VISIT_LOG_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQnRHPnTmun-kUmR5JkPd8_C4ROoKd2p917meUH83g5leixOnkoMBsM1pltFviSQhk9qqB04DCiirbB/pub?gid=608946915&single=true&output=csv";
+var SPREADSHEET_ID = "1E7_n_W1P0S6xm6Zj1ue3dB7ox_GB21IYJAwlpdWL86w";
+var PLANOGRAM_GID = "1451909011";
+var VISIT_LOG_GID = "608946915";
 
 (async function init(){
   setRows(window.__SEED_DATA__.map(finalizeRow), { sample:true });
@@ -1114,15 +1171,14 @@ var DEFAULT_VISIT_LOG_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQn
     state.visitLog = computeVisitTypes(seedLog);
     renderAll();
   }
-  await fetchSheet(DEFAULT_SHEET_URL);
-  if(DEFAULT_VISIT_LOG_URL) await fetchVisitLog(DEFAULT_VISIT_LOG_URL);
+  await fetchSheet(PLANOGRAM_GID);
+  if(VISIT_LOG_GID) await fetchVisitLog(VISIT_LOG_GID);
   setInterval(function(){
-    if(state.sheetUrl) fetchSheet(state.sheetUrl);
-    if(state.visitLogUrl) fetchVisitLog(state.visitLogUrl);
+    if(state.sheetGid) fetchSheet(state.sheetGid);
+    if(state.visitLogGid) fetchVisitLog(state.visitLogGid);
   }, 5*60*1000);
 })();
 
 </script>
 </body>
 </html>
-
