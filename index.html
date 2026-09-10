@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vistracept — Market Visit Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+:root{
+  --page:#F3F5F8;
+  --card:#FFFFFF;
+  --ink:#0A1F44; --ink-soft:#2E4372; --muted:#6B7280; --line:#E2E6ED;
+  --gold:#E8A33D; --gold-soft:#FCEFD9;
+  --green:#1E7145; --green-soft:#E7F3EC;
+  --red:#B23B3B; --red-soft:#FBECEC;
+  --teal:#1E7A7A; --teal-soft:rgba(30,122,122,.12);
+  --navy-deep:#0A1F44;
+  --radius:12px;
+  --font-display:'Fraunces', Georgia, serif;
+  --font-body:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --track:#E2E6ED;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--page);
+  color:var(--ink);
+  font-family:var(--font-body);
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{font-family:var(--font-display);margin:0;color:var(--navy-deep);}
+a{color:inherit;}
+button{font-family:var(--font-body);}
+
+/* ---------- Header ---------- */
+header.top{
+  background:linear-gradient(180deg,#0A1F44 0%,#0E2A5C 100%);
+  padding:20px 28px 18px;
+}
+.top-row{
+  max-width:1500px;margin:0 auto;
+  display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;
+}
+.eyebrow{
+  font-family:var(--font-body);font-size:11px;letter-spacing:1.2px;text-transform:uppercase;
+  color:#E8A33D;font-weight:700;margin-bottom:6px;
+}
+.brand-title h1{color:#fff;font-size:26px;font-weight:600;}
+.brand-title .sub{color:#B9C3D6;font-size:12.5px;margin-top:5px;font-family:var(--font-body);}
+.header-right{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
+.data-status{font-size:11px;color:#B9C3D6;font-weight:600;display:flex;align-items:center;gap:6px;}
+.data-status .dot{width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block;}
+.data-status.live .dot{background:#6FE3A6;}
+.header-btns{display:flex;gap:8px;}
+.btn{
+  font-family:var(--font-body);font-size:12.5px;font-weight:600;padding:8px 14px;border-radius:8px;
+  border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;cursor:pointer;
+  transition:background .15s ease;
+}
+.btn:hover{background:rgba(255,255,255,.18);}
+.btn.primary{background:var(--gold);border-color:var(--gold);color:#0A1F44;}
+.btn.primary:hover{background:#f0b459;}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink-soft);}
+.btn.ghost:hover{background:var(--page);}
+.btn.small{padding:6px 10px;font-size:11.5px;}
+
+/* ---------- Filters ---------- */
+.filters-bar{
+  display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;
+}
+.filters-bar.table-filters{ max-width:none; padding:0; margin:0 0 14px; }
+.filters-bar select, .filters-bar input[type="text"]{
+  font-family:var(--font-body);font-size:12.5px;padding:8px 10px;border-radius:8px;
+  border:1px solid var(--line);background:#fff;color:var(--ink);min-width:130px;
+}
+.filters-bar input[type="text"]{min-width:220px;}
+.filters-bar label{font-size:11px;color:var(--muted);font-weight:600;margin-right:4px;}
+.filter-group{display:flex;align-items:center;gap:5px;}
+.reset-link{font-size:12px;color:var(--teal);font-weight:600;cursor:pointer;text-decoration:underline;margin-left:4px;}
+.reset-link:hover{color:var(--navy-deep);}
+.result-count{margin-left:auto;font-size:12px;color:var(--muted);font-weight:600;}
+
+/* ---------- Layout ---------- */
+.wrap{max-width:1500px;margin:0 auto;padding:20px 28px 60px;}
+.kpi-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;
+}
+.kpi-card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px 18px;box-shadow:0 2px 10px rgba(10,31,68,.05);
+}
+.kpi-card .kpi-label{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;margin-bottom:8px;}
+.kpi-card .kpi-value{font-family:var(--font-display);font-size:30px;font-weight:700;color:var(--navy-deep);line-height:1;}
+.kpi-card .kpi-sub{font-size:11.5px;color:var(--muted);margin-top:7px;}
+.kpi-card.accent-red .kpi-value{color:var(--red);}
+.kpi-card.accent-gold .kpi-value{color:#B4780F;}
+.kpi-card.accent-green .kpi-value{color:var(--green);}
+.kpi-card.accent-teal .kpi-value{color:var(--teal);}
+
+.panel{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:18px 20px 20px;box-shadow:0 2px 10px rgba(10,31,68,.05);margin-bottom:18px;
+}
+.panel h2{font-size:16px;font-weight:600;padding-left:11px;border-left:4px solid var(--gold);margin-bottom:2px;}
+.panel .panel-sub{font-size:11.5px;color:var(--muted);margin:5px 0 14px 15px;}
+.panel-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;}
+.panel-head .tabs{display:flex;gap:6px;}
+.tab-btn{
+  font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:7px;border:1px solid var(--line);
+  background:#fff;color:var(--ink-soft);cursor:pointer;
+}
+.tab-btn.active{background:var(--navy-deep);border-color:var(--navy-deep);color:#fff;}
+
+.grid-2{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+@media(max-width:1100px){.grid-2,.grid-3{grid-template-columns:1fr;}.kpi-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:600px){.kpi-grid{grid-template-columns:1fr 1fr;}}
+
+.chart-wrap{position:relative;height:230px;}
+.chart-wrap.tall{height:300px;}
+
+/* ---------- Alerts ---------- */
+.alert-tabs{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.alert-chip{
+  font-size:12px;font-weight:700;padding:6px 12px;border-radius:20px;cursor:pointer;
+  border:1px solid var(--line);background:#fff;color:var(--ink-soft);
+}
+.alert-chip .n{margin-left:6px;font-family:var(--font-display);}
+.alert-chip.overdue{border-color:#E9C7C7;} .alert-chip.overdue.active{background:var(--red);border-color:var(--red);color:#fff;}
+.alert-chip.today{border-color:#F3D9AE;} .alert-chip.today.active{background:var(--gold);border-color:var(--gold);color:#3D2B08;}
+.alert-chip.upcoming{border-color:#B9DEDE;} .alert-chip.upcoming.active{background:var(--teal);border-color:var(--teal);color:#fff;}
+.alert-chip.all.active{background:var(--navy-deep);border-color:var(--navy-deep);color:#fff;}
+
+.alert-list{max-height:360px;overflow-y:auto;}
+.alert-row{
+  display:flex;align-items:center;gap:12px;padding:11px 10px;border-bottom:1px solid var(--line);
+}
+.alert-row:last-child{border-bottom:none;}
+.alert-row .urg{width:8px;height:8px;border-radius:50%;flex:none;}
+.urg.red{background:var(--red);} .urg.gold{background:var(--gold);} .urg.teal{background:var(--teal);}
+.alert-row .main{flex:1;min-width:0;}
+.alert-row .company{font-weight:700;font-size:13.5px;color:var(--navy-deep);}
+.alert-row .meta{font-size:11.5px;color:var(--muted);margin-top:2px;}
+.alert-row .meta a{color:var(--teal);text-decoration:none;font-weight:600;}
+.alert-row .badge{font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:6px;white-space:nowrap;}
+.badge.red{background:var(--red-soft);color:var(--red);}
+.badge.gold{background:var(--gold-soft);color:#B4780F;}
+.badge.teal{background:var(--teal-soft);color:var(--teal);}
+.badge.green{background:var(--green-soft);color:var(--green);}
+.badge.grey{background:var(--page);color:var(--muted);}
+.alert-row .status-txt{font-size:11px;color:var(--ink-soft);margin-top:3px;}
+.empty-state{padding:30px 10px;text-align:center;color:var(--muted);font-size:13px;}
+
+/* ---------- Table ---------- */
+.table-wrap{overflow-x:auto;}
+table.data-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+table.data-table th{
+  text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);
+  padding:9px 10px;border-bottom:2px solid var(--line);cursor:pointer;white-space:nowrap;position:sticky;top:0;background:#fff;
+}
+table.data-table th:hover{color:var(--navy-deep);}
+table.data-table td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink-soft);}
+table.data-table tr:hover td{background:var(--page);}
+.pill{font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:6px;white-space:nowrap;display:inline-block;}
+.pagination{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:12px;color:var(--muted);}
+.pagination .pg-btns{display:flex;gap:6px;}
+
+/* ---------- Modal ---------- */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(10,31,68,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;
+}
+.modal-overlay.open{display:flex;}
+.modal{background:#fff;border-radius:14px;max-width:520px;width:100%;padding:26px 26px 22px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.modal h3{font-size:18px;margin-bottom:4px;}
+.modal p{font-size:12.5px;color:var(--muted);line-height:1.6;}
+.modal ol{font-size:12.5px;color:var(--ink-soft);line-height:1.8;padding-left:18px;}
+.modal input[type="text"]{
+  width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);font-size:12.5px;margin:10px 0 6px;font-family:var(--font-body);
+}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+.modal-close{position:absolute;top:16px;right:20px;cursor:pointer;color:var(--muted);font-size:20px;line-height:1;}
+.modal-status{font-size:12px;font-weight:600;margin-top:8px;}
+.modal-status.ok{color:var(--green);} .modal-status.err{color:var(--red);}
+
+footer{max-width:1500px;margin:10px auto 30px;padding:0 28px;font-size:11.5px;color:var(--muted);text-align:center;}
+footer a{color:var(--teal);cursor:pointer;text-decoration:underline;}
+
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-row">
+    <div class="brand-title">
+      <div class="eyebrow">Field Sales &middot; Corporate Accounts</div>
+      <h1 id="dashTitle">Market Visit Dashboard</h1>
+      <div class="sub" id="dashSub">Territory coverage, follow-up alerts &amp; visit productivity</div>
+    </div>
+    <div class="header-right">
+      <div class="data-status" id="dataStatus"><span class="dot"></span><span id="dataStatusText">Using sample data — connect your Google Sheet to go live</span></div>
+      <div class="header-btns">
+        <button class="btn small" id="refreshBtn">Refresh</button>
+        <button class="btn primary small" id="connectBtn">Connect Google Sheet</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Follow-up alerts</h2>
+        <div class="panel-sub" style="margin-left:15px;">Accounts with a next-visit date coming up, sorted by urgency</div>
+      </div>
+      <div class="alert-tabs" id="alertTabs">
+        <span class="alert-chip all active" data-tab="ALL">All<span class="n" id="cntAll">0</span></span>
+        <span class="alert-chip overdue" data-tab="OVERDUE">Overdue<span class="n" id="cntOverdue">0</span></span>
+        <span class="alert-chip today" data-tab="TODAY">Today<span class="n" id="cntToday">0</span></span>
+        <span class="alert-chip upcoming" data-tab="UPCOMING">Next 7 days<span class="n" id="cntUpcoming">0</span></span>
+      </div>
+    </div>
+    <div class="alert-list" id="alertList"></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>Visit productivity</h2>
+          <div class="panel-sub" style="margin-left:15px;">Visits recorded since 1 September</div>
+        </div>
+        <div class="tabs">
+          <span class="tab-btn active" data-range="daily">Daily</span>
+          <span class="tab-btn" data-range="weekly">Weekly</span>
+          <span class="tab-btn" data-range="monthly">Monthly</span>
+        </div>
+      </div>
+      <div class="chart-wrap tall"><canvas id="trendChart"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <h2>Visited vs. converted</h2>
+      <div class="panel-sub" style="margin-left:15px;">Monthly totals since September — a visit counts as converted when its Status mentions "converted"</div>
+      <div class="chart-wrap tall"><canvas id="convertedChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="filters-bar table-filters">
+    <div class="filter-group"><label>District</label><select id="districtFilter"><option value="ALL">All</option></select></div>
+    <div class="filter-group"><label>Category</label><select id="categoryFilter"><option value="ALL">All</option></select></div>
+    <div class="filter-group"><label>Status</label><select id="statusFilter"><option value="ALL">All</option></select></div>
+    <div class="filter-group"><label>Visit</label><select id="visitFilter">
+        <option value="ALL">All accounts</option>
+        <option value="VISITED">Visited</option>
+        <option value="NOT_VISITED">Not yet visited</option>
+    </select></div>
+    <span class="reset-link" id="resetFilters">Reset filters</span>
+    <span class="result-count" id="resultCount"></span>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>All accounts</h2>
+        <div class="panel-sub" style="margin-left:15px;">Full list — click a column to sort. Filters above apply to this table only.</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table" id="dataTable">
+        <thead><tr id="tableHead"></tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="pagination">
+      <span id="pageInfo"></span>
+      <div class="pg-btns">
+        <button class="btn ghost small" id="prevPage">Prev</button>
+        <button class="btn ghost small" id="nextPage">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Visit date is treated as the most recently recorded visit for each account. Connect your published Google Sheet for live updates — <a id="aboutLink">how this works</a>.
+  </footer>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" style="position:relative;">
+    <span class="modal-close" id="modalClose">&times;</span>
+    <h3>Connect your Google Sheet</h3>
+    <p>Publish the tracker sheet to the web as CSV, then paste the link below. The dashboard will read live from it — every time your salesperson updates the sheet, hit Refresh (or reload) here to see it.</p>
+    <ol>
+      <li>Open the Google Sheet &rarr; <b>File &rarr; Share &rarr; Publish to web</b></li>
+      <li>Under "Link", choose the tracker sheet/tab and set format to <b>Comma-separated values (.csv)</b></li>
+      <li>Click <b>Publish</b>, then copy the generated link</li>
+      <li>Paste it below and click Save &amp; Load</li>
+    </ol>
+    <input type="text" id="sheetUrlInput" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?output=csv">
+    <div class="modal-status" id="modalStatus"></div>
+    <div class="modal-actions">
+      <button class="btn ghost small" id="useSampleBtn">Use sample data instead</button>
+      <button class="btn primary small" id="saveSheetBtn">Save &amp; Load</button>
+    </div>
+  </div>
+</div>
+
+<script>
+window.__SEED_DATA__ = [{"slNo": "1", "company": "The Leela", "category": "Hotel &resort", "personMeet": "P1", "contact": "C1", "mobile": "M1", "email": "e1@gmail.com", "landline": "0471 6691111", "district": "Trivandrum", "place": "Kovalam", "visitDate": "2026-09-09", "remarks": "person not available", "nextVisitDate": "15/9/2026", "status": "in progress"}, {"slNo": "2", "company": "Hyatt Regency", "category": "Hotel &resort", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4712581234", "district": "Trivandrum", "place": "Kovalam", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "3", "company": "Kims Health", "category": "Hospitals", "personMeet": "P2", "contact": "C2", "mobile": "M2", "email": "e2@gmail.com", "landline": "4714713400", "district": "Trivandrum", "place": "TVM", "visitDate": "2026-10-09", "remarks": "met , interested", "nextVisitDate": "2026-10-10", "status": "Converted"}, {"slNo": "4", "company": "Nims hospital", "category": "Hospitals", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4712222115", "district": "Trivandrum", "place": "TVM", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "5", "company": "PPD Vistas", "category": "Builders &Real estate company", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "7559975598", "district": "Trivandrum", "place": "TVM", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "6", "company": "Morrow homes", "category": "Builders &Real estate company", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "7593889868", "district": "Trivandrum", "place": "TVM", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "7", "company": "Shanoor Projects", "category": "Builders &Real estate company", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "9645037770", "district": "Trivandrum", "place": "TVM Town", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "8", "company": "Artech Life Spaces", "category": "Apartments/Projects", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "9847600600", "district": "Trivandrum", "place": "Kulathoor", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "9", "company": "Varma Dr.pai Legacy", "category": "Apartments/Projects", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4847962559", "district": "Trivandrum", "place": "Poojappura", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "10", "company": "Keltron", "category": "IT", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4712724444", "district": "Trivandrum", "place": "Vellayambalam", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "11", "company": "Rajakumari", "category": "jewellary", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "9349947721", "district": "Trivandrum", "place": "Parippally", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "12", "company": "Swayamvara silks", "category": "textile", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "9207535599", "district": "Trivandrum", "place": "Pparippally", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "13", "company": "CITY group", "category": "Builders &Real estate company", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "", "district": "Trivandrum", "place": "Vazhuthakkad", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "14", "company": "", "category": "Government/Psu Institutions", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "", "district": "Trivandrum", "place": "TVM Town", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "15", "company": "", "category": "Interior Designers & Contractors", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "", "district": "Trivandrum", "place": "TVM Town", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "16", "company": "", "category": "Facility Management Companies", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "", "district": "Trivandrum", "place": "TVM Town", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "17", "company": "Pankaja kasthuri", "category": "Hospitals", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4712295919", "district": "Trivandrum", "place": "kattakada", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "18", "company": "KMML", "category": "minerals and metal", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4762651215", "district": "Kollam", "place": "Chavara", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "19", "company": "KEL", "category": "machine equipment", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4712314287", "district": "Kollam", "place": "", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "20", "company": "TKM", "category": "collage", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4742712024", "district": "Kollam", "place": "", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "21", "company": "KSDP", "category": "medical", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4772258184", "district": "ALAPUZHA", "place": "kalavoor", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "22", "company": "Coirfed", "category": "mattress", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4772244109", "district": "Trivandrum", "place": "Poojappura", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "23", "company": "milma", "category": "milk", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4772287760", "district": "Trivandrum", "place": "Vellayambalam", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "24", "company": "Manorama", "category": "News", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4812562479", "district": "Trivandrum", "place": "Parippally", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "25", "company": "Paragon", "category": "polymer", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4812564788", "district": "Trivandrum", "place": "Pparippally", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "26", "company": "travancore cement", "category": "cement", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4812361371", "district": "Trivandrum", "place": "Vazhuthakkad", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "27", "company": "Devon masala", "category": "fmcg", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4812539740", "district": "Trivandrum", "place": "TVM Town", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "28", "company": "ALCO", "category": "Aluminium", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "", "district": "Trivandrum", "place": "TVM Town", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "29", "company": "The Leela", "category": "Hotel &resort", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "0471 6691111", "district": "Trivandrum", "place": "Poojappura", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "30", "company": "Hyatt Regency", "category": "Hotel &resort", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4712581234", "district": "Trivandrum", "place": "Vellayambalam", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "31", "company": "Kims Health", "category": "Hospitals", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4714713400", "district": "Trivandrum", "place": "Parippally", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "32", "company": "Nims hospital", "category": "Hospitals", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4712222115", "district": "Trivandrum", "place": "Pparippally", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "33", "company": "PPD Vistas", "category": "Builders &Real estate company", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "7559975598", "district": "Trivandrum", "place": "Vazhuthakkad", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "34", "company": "Morrow homes", "category": "Builders &Real estate company", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "7593889868", "district": "Trivandrum", "place": "TVM Town", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "35", "company": "Shanoor Projects", "category": "Builders &Real estate company", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "9645037770", "district": "Trivandrum", "place": "TVM Town", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "36", "company": "Artech Life Spaces", "category": "Apartments/Projects", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "9847600600", "district": "Trivandrum", "place": "TVM Town", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "37", "company": "Varma Dr.pai Legacy", "category": "Apartments/Projects", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4847962559", "district": "Trivandrum", "place": "kattakada", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "38", "company": "Jayalakshmi silks", "category": "textile", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4872434000", "district": "Kollam", "place": "Chavara", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "39", "company": "POTHYS", "category": "textile", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "8069680290", "district": "Kollam", "place": "", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "40", "company": "Life style", "category": "shopping mall", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "9400329710", "district": "Kollam", "place": "", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "41", "company": "Ramachandra silks", "category": "textile", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "8893099999", "district": "ALAPUZHA", "place": "kalavoor", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "42", "company": "Cordial developers", "category": "Builders &Real estate company", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "7356604477", "district": "Trivandrum", "place": "Poojappura", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "43", "company": "D life", "category": "Interior Designers & Contractors", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "9562353333", "district": "Trivandrum", "place": "Vellayambalam", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "44", "company": "Kalyan developers", "category": "Builders &Real estate company", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "9946653555", "district": "Trivandrum", "place": "Parippally", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "45", "company": "Pankaja kasthuri", "category": "Hospitals", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4712295919", "district": "Trivandrum", "place": "Pparippally", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "46", "company": "Indian oil", "category": "oil and gas", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4842556007", "district": "Trivandrum", "place": "Vazhuthakkad", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "47", "company": "vodafone", "category": "mobile", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4842825312", "district": "Trivandrum", "place": "TVM Town", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "48", "company": "Eastern", "category": "fmcg", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "", "district": "Trivandrum", "place": "TVM Town", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "49", "company": "Syenthite Industries", "category": "spices", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "7947145774", "district": "Trivandrum", "place": "Poojappura", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "50", "company": "cochin shipyard", "category": "ship building", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4842501200", "district": "Trivandrum", "place": "Vellayambalam", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "51", "company": "ONGC", "category": "oil and gas", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4842720871", "district": "Trivandrum", "place": "Parippally", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "52", "company": "Bharath petrolium", "category": "oil and gas", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4842821112", "district": "Trivandrum", "place": "Pparippally", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "53", "company": "Fact", "category": "Agriculture", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "7947114214", "district": "Trivandrum", "place": "Vazhuthakkad", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "54", "company": "Maruthi suzuki", "category": "motor Vehicle", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4842821112", "district": "Trivandrum", "place": "TVM Town", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "55", "company": "Hero motors", "category": "motor Vehicle", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "7947114214", "district": "Trivandrum", "place": "TVM Town", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "56", "company": "Tvs", "category": "motor Vehicle", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "9846424189", "district": "Trivandrum", "place": "TVM Town", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "57", "company": "muthoot Finance", "category": "finance", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "", "district": "Trivandrum", "place": "kattakada", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "58", "company": "Muthoot Fin corporation", "category": "finance", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "9895889293", "district": "Kollam", "place": "Chavara", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "59", "company": "Ambuja cement", "category": "cement", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4846624162", "district": "Kollam", "place": "", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "60", "company": "Ramco cement", "category": "cement", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "9446577712", "district": "Kollam", "place": "", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "61", "company": "Avt", "category": "tea", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4842315312", "district": "ALAPUZHA", "place": "kalavoor", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "62", "company": "Dhanalakhmi", "category": "bank", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4876617000", "district": "Trivandrum", "place": "Poojappura", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "63", "company": "south indian", "category": "bank", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4872420020", "district": "Trivandrum", "place": "Vellayambalam", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "64", "company": "ESAF", "category": "bank", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4877123456", "district": "Trivandrum", "place": "Parippally", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "65", "company": "manappuram", "category": "Finance", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4873050000", "district": "Trivandrum", "place": "Pparippally", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "66", "company": "kalyan", "category": "jewelary", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4872437333", "district": "Trivandrum", "place": "Vazhuthakkad", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "67", "company": "KDS chitts", "category": "Finance", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "8089849800", "district": "Trivandrum", "place": "TVM Town", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "68", "company": "Malabar group", "category": "Jewelry", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4952726916", "district": "Trivandrum", "place": "TVM Town", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "69", "company": "Vkc group", "category": "Footwear", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "9526221100", "district": "Trivandrum", "place": "Poojappura", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "70", "company": "MYG", "category": "Home appiliance", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "9249001001", "district": "Trivandrum", "place": "Vellayambalam", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "71", "company": "Hilite builders", "category": "Realestate", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "9847332244", "district": "Trivandrum", "place": "Parippally", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "72", "company": "Infosys ltd", "category": "IT", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4713982222", "district": "Trivandrum", "place": "Pparippally", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "73", "company": "Scipy technologies", "category": "IT", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "7356238071", "district": "Trivandrum", "place": "Vazhuthakkad", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "74", "company": "Innoval digital solution", "category": "It", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4714074000", "district": "Trivandrum", "place": "TVM Town", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "75", "company": "Cribson technologies", "category": "IT", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "9400419190", "district": "Trivandrum", "place": "TVM Town", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "76", "company": "Ust global", "category": "IT", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "7947427019", "district": "Trivandrum", "place": "TVM Town", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "77", "company": "TCS", "category": "IT", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4716629400", "district": "Trivandrum", "place": "kattakada", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "78", "company": "Saiha software technologies", "category": "IT", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "9778280848", "district": "Kollam", "place": "Chavara", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "79", "company": "Iroid Technologies", "category": "IT", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "8129855155", "district": "Kollam", "place": "", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "80", "company": "Spectrum softtech solution", "category": "IT", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4844082000", "district": "Kollam", "place": "", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "81", "company": "BEO Software pvt ltd", "category": "IT", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4842341197", "district": "ALAPUZHA", "place": "kalavoor", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "82", "company": "Keltron communication", "category": "IT", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4712598948", "district": "Trivandrum", "place": "Poojappura", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "83", "company": "KSFE", "category": "Financial", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4872332255", "district": "Trivandrum", "place": "Vellayambalam", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "84", "company": "Eastern", "category": "Fmcg food product", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4843001100", "district": "Trivandrum", "place": "Parippally", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "85", "company": "Quality food product", "category": "fmcg", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4782524114", "district": "Trivandrum", "place": "Pparippally", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "86", "company": "Federal banh", "category": "Bank", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4842623620", "district": "Trivandrum", "place": "Vazhuthakkad", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "87", "company": "Gail  india Ltd", "category": "Gas", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4842843210", "district": "Trivandrum", "place": "TVM Town", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "88", "company": "Indian Gateway terminal", "category": "Container shipping", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4844156100", "district": "Trivandrum", "place": "TVM Town", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "89", "company": "kerala vision", "category": "Media", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "8086897514", "district": "Trivandrum", "place": "Poojappura", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "90", "company": "Cochin port Authority", "category": "port", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4842666871", "district": "Ekm", "place": "Island", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "91", "company": "Kaasma Pvt ltd", "category": "Event management", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "9847723444", "district": "Ekm", "place": "Kalamassary", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "92", "company": "Mark valley", "category": "Drinking Water", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "7558988844", "district": "Ekm", "place": "Pallithazham", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "93", "company": "Air india Express", "category": "Air cargo", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4842610050", "district": "Ekm", "place": "Pallimukku", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "94", "company": "Sail", "category": "steel", "personMeet": "", "contact": "", "mobile": "", "email": "bmcoc.cmo@sail.in", "landline": "4842380074", "district": "Ekm", "place": "menaka", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "95", "company": "Nexo footwear", "category": "footwear", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4952422466", "district": "Kozhikod", "place": "Parakkulam", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "96", "company": "Kitex", "category": "Bag and footwear", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4842680600", "district": "Ekm", "place": "kizhakkambalom", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "97", "company": "cognizant technology", "category": "IT", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4843921000", "district": "Ekm", "place": "Kakkanad", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "98", "company": "Wipro", "category": "IT", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4843054949", "district": "EKM", "place": "Kakkanad", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "99", "company": "Ibm", "category": "IT", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "7947424386", "district": "Ekm", "place": "Cyber tower", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "100", "company": "Telk", "category": "electricals", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4842510251", "district": "Ekm", "place": "Angamaly", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}, {"slNo": "101", "company": "Parisons group", "category": "food  product", "personMeet": "", "contact": "", "mobile": "", "email": "", "landline": "4952365618", "district": "Kozhikod", "place": "Mananchira", "visitDate": "", "remarks": "", "nextVisitDate": "", "status": ""}];
+/* ===================== Config ===================== */
+var SALESPERSON_NAME = "Vistracept";
+document.getElementById('dashTitle').textContent = SALESPERSON_NAME + " — Market Visit Dashboard";
+
+var PAGE_SIZE = 12;
+var PALETTE = ['#1E7145','#E8A33D','#1E7A7A','#2E4372','#B23B3B','#8A93A3','#0A1F44','#94A3B8'];
+
+var HEADER_ALIAS = {
+  'slno':'slNo','sino':'slNo','sno':'slNo',
+  'companyname':'company','company':'company',
+  'category':'category',
+  'personmeet':'personMeet','personmet':'personMeet','personmeeting':'personMeet',
+  'contactpersonname':'contact','contactperson':'contact','contactname':'contact',
+  'mobilenumber':'mobile','mobile':'mobile','phone':'mobile','phonenumber':'mobile',
+  'emailid':'email','email':'email',
+  'companylandline':'landline','landline':'landline',
+  'district':'district',
+  'place':'place','location':'place',
+  'visitingdate':'visitDate','visitdate':'visitDate','lastvisitdate':'visitDate',
+  'visitremarks':'remarks','remarks':'remarks','notes':'remarks',
+  'nextvisitingdate':'nextVisitDate','nextvisitdate':'nextVisitDate','followupdate':'nextVisitDate',
+  'status':'status'
+};
+
+/* ===================== State ===================== */
+var state = {
+  rows: [],
+  sheetUrl: null,
+  usingSample: true,
+  filters: { district:'ALL', category:'ALL', status:'ALL', visit:'ALL' },
+  alertTab: 'ALL',
+  trendRange: 'daily',
+  sort: { field:'nextVisitDate', dir:'asc' },
+  page: 1,
+  lastMetrics: null
+};
+
+var charts = {};
+
+/* ===================== Date helpers ===================== */
+function startOfDay(d){ var x=new Date(d); x.setHours(0,0,0,0); return x; }
+function sameDay(a,b){ return a && b && a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+function startOfWeek(d){ var x=startOfDay(d); var day=x.getDay(); var diff=(day===0?6:day-1); x.setDate(x.getDate()-diff); return x; }
+function shortDate(d){ return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}); }
+function fullDate(d){ return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
+
+function parseFlexibleDate(str){
+  if(!str) return null;
+  str = ('' + str).trim();
+  if(!str) return null;
+  var m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m){ var d = new Date(+m[1], +m[2]-1, +m[3]); return isNaN(d) ? null : d; }
+  m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if(m){
+    var a=+m[1], b=+m[2], y=+m[3];
+    if(y<100) y += 2000;
+    var day, month;
+    if(a>12){ day=a; month=b; }
+    else if(b>12){ day=b; month=a; }
+    else { day=a; month=b; } // default DD/MM
+    var d2 = new Date(y, month-1, day);
+    return isNaN(d2) ? null : d2;
+  }
+  var d3 = new Date(str);
+  return isNaN(d3) ? null : d3;
+}
+
+/* ===================== Data ingest ===================== */
+function normalizeHeader(h){ return ('' + h).toLowerCase().replace(/[^a-z0-9]/g,''); }
+
+function finalizeRow(obj){
+  return {
+    slNo: obj.slNo || '',
+    company: (obj.company || '').trim(),
+    category: (obj.category || '').trim(),
+    personMeet: (obj.personMeet || '').trim(),
+    contact: (obj.contact || '').trim(),
+    mobile: (obj.mobile || '').trim(),
+    email: (obj.email || '').trim(),
+    landline: (obj.landline || '').trim(),
+    district: (obj.district || '').trim(),
+    place: (obj.place || '').trim(),
+    visitDateRaw: obj.visitDate || '',
+    visitDate: parseFlexibleDate(obj.visitDate || obj.visitDateRaw),
+    remarks: (obj.remarks || '').trim(),
+    nextVisitDateRaw: obj.nextVisitDate || '',
+    nextVisitDate: parseFlexibleDate(obj.nextVisitDate || obj.nextVisitDateRaw),
+    status: (obj.status || '').trim()
+  };
+}
+
+function rawCsvRowToCanon(raw){
+  var obj = {};
+  Object.keys(raw).forEach(function(k){
+    var canon = HEADER_ALIAS[normalizeHeader(k)];
+    if(canon) obj[canon] = ('' + (raw[k] || '')).trim();
+  });
+  return finalizeRow(obj);
+}
+
+function ingestCSV(text){
+  var parsed = Papa.parse(text, { header:true, skipEmptyLines:true });
+  return parsed.data.map(rawCsvRowToCanon).filter(function(r){ return r.company || r.category; });
+}
+
+/* ===================== Storage (best-effort) ===================== */
+async function loadSavedUrl(){
+  try{
+    if(window.storage){
+      var res = await window.storage.get('sheetUrl', false);
+      if(res && res.value) return res.value;
+    }
+  }catch(e){}
+  return null;
+}
+async function saveUrl(url){
+  try{ if(window.storage){ await window.storage.set('sheetUrl', url, false); } }catch(e){}
+}
+async function clearSavedUrl(){
+  try{ if(window.storage){ await window.storage.delete('sheetUrl', false); } }catch(e){}
+}
+
+/* ===================== Metrics ===================== */
+function seasonStart(today){ return new Date(today.getFullYear(), 8, 1); } // 1 September
+
+function buildTrendBuckets(visitedRows, mode, today){
+  var labels = [], keys = [], counts = {};
+  var start = seasonStart(today);
+  if(mode === 'daily'){
+    var dayCount = Math.max(1, Math.round((startOfDay(today) - start) / 86400000) + 1);
+    for(var i=dayCount-1;i>=0;i--){ var d=new Date(today); d.setDate(d.getDate()-i); var k=d.toDateString(); keys.push(k); labels.push(shortDate(d)); counts[k]=0; }
+    visitedRows.forEach(function(r){ var k=r.visitDate.toDateString(); if(k in counts) counts[k]++; });
+  } else if(mode === 'weekly'){
+    var wStart = startOfWeek(start);
+    var weekCount = Math.max(1, Math.round((startOfWeek(today) - wStart) / (7*86400000)) + 1);
+    for(var w=weekCount-1; w>=0; w--){ var ws=new Date(startOfWeek(today)); ws.setDate(ws.getDate()-7*w); var k=ws.toDateString(); keys.push(k); labels.push(shortDate(ws)); counts[k]=0; }
+    visitedRows.forEach(function(r){ var ws=startOfWeek(r.visitDate); var k=ws.toDateString(); if(k in counts) counts[k]++; });
+  } else {
+    var monthCount = Math.max(1, (today.getFullYear()-start.getFullYear())*12 + (today.getMonth()-start.getMonth()) + 1);
+    for(var mo=monthCount-1; mo>=0; mo--){
+      var md = new Date(today.getFullYear(), today.getMonth()-mo, 1);
+      var k = md.getFullYear()+'-'+md.getMonth();
+      keys.push(k); labels.push(md.toLocaleDateString('en-GB',{month:'short',year:'2-digit'})); counts[k]=0;
+    }
+    visitedRows.forEach(function(r){
+      var k = r.visitDate.getFullYear()+'-'+r.visitDate.getMonth();
+      if(k in counts) counts[k]++;
+    });
+  }
+  return { labels: labels, data: keys.map(function(k){ return counts[k]; }) };
+}
+
+function computeMetrics(rows){
+  var today = startOfDay(new Date());
+  var total = rows.length;
+  var visitedRows = rows.filter(function(r){ return r.visitDate; });
+  var visited = visitedRows.length;
+  var pending = total - visited;
+  var coveragePct = total ? Math.round(visited/total*100) : 0;
+
+  var withNext = rows.filter(function(r){ return r.nextVisitDate; });
+  var overdue = withNext.filter(function(r){ return r.nextVisitDate < today && !sameDay(r.nextVisitDate,today); }).sort(function(a,b){ return a.nextVisitDate-b.nextVisitDate; });
+  var dueToday = withNext.filter(function(r){ return sameDay(r.nextVisitDate,today); });
+  var in7 = new Date(today); in7.setDate(in7.getDate()+7);
+  var upcoming = withNext.filter(function(r){ return r.nextVisitDate>today && r.nextVisitDate<=in7 && !sameDay(r.nextVisitDate,today); }).sort(function(a,b){ return a.nextVisitDate-b.nextVisitDate; });
+  var allAlerts = withNext.slice().sort(function(a,b){ return a.nextVisitDate-b.nextVisitDate; });
+
+  var visitsToday = visitedRows.filter(function(r){ return sameDay(r.visitDate,today); }).length;
+  var weekStart = startOfWeek(today);
+  var visitsThisWeek = visitedRows.filter(function(r){ return r.visitDate>=weekStart; }).length;
+  var monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  var visitsThisMonth = visitedRows.filter(function(r){ return r.visitDate>=monthStart; }).length;
+
+  var activeDaySet = {};
+  visitedRows.filter(function(r){ return r.visitDate>=monthStart; }).forEach(function(r){ activeDaySet[r.visitDate.toDateString()]=1; });
+  var activeDaysThisMonth = Object.keys(activeDaySet).length;
+  var avgPerActiveDay = activeDaysThisMonth ? (visitsThisMonth/activeDaysThisMonth).toFixed(1) : '0.0';
+
+  var catMap = {};
+  rows.forEach(function(r){
+    var c = r.category || 'Uncategorised';
+    if(!catMap[c]) catMap[c] = {visited:0,pending:0,total:0};
+    catMap[c].total++;
+    if(r.visitDate) catMap[c].visited++; else catMap[c].pending++;
+  });
+
+  var distMap = {};
+  rows.forEach(function(r){
+    var d = r.district || 'Unspecified';
+    if(!distMap[d]) distMap[d] = {visited:0,pending:0,total:0};
+    distMap[d].total++;
+    if(r.visitDate) distMap[d].visited++; else distMap[d].pending++;
+  });
+
+  var statusMap = {};
+  rows.forEach(function(r){
+    var s = r.status ? r.status.trim() : '';
+    s = s ? s : 'Not updated';
+    statusMap[s] = (statusMap[s]||0) + 1;
+  });
+
+  var neverVisited = rows.filter(function(r){ return !r.visitDate; })
+    .sort(function(a,b){ return (a.category||'').localeCompare(b.category||'') || a.company.localeCompare(b.company); });
+
+  return {
+    total:total, visited:visited, pending:pending, coveragePct:coveragePct,
+    overdue:overdue, dueToday:dueToday, upcoming:upcoming, allAlerts:allAlerts,
+    visitsToday:visitsToday, visitsThisWeek:visitsThisWeek, visitsThisMonth:visitsThisMonth,
+    activeDaysThisMonth:activeDaysThisMonth, avgPerActiveDay:avgPerActiveDay,
+    catMap:catMap, distMap:distMap, statusMap:statusMap,
+    neverVisited:neverVisited, visitedRows:visitedRows, today:today
+  };
+}
+
+/* ===================== Filtering ===================== */
+function getFilteredRows(){
+  var f = state.filters;
+  return state.rows.filter(function(r){
+    if(f.district!=='ALL' && r.district!==f.district) return false;
+    if(f.category!=='ALL' && r.category!==f.category) return false;
+    if(f.status!=='ALL'){
+      var s = r.status ? r.status.trim() : 'Not updated';
+      if(s !== f.status) return false;
+    }
+    if(f.visit==='VISITED' && !r.visitDate) return false;
+    if(f.visit==='NOT_VISITED' && r.visitDate) return false;
+    return true;
+  });
+}
+
+function isConverted(status){ return !!(status && /convert/i.test(status)); }
+
+function populateFilterOptions(rows){
+  var districts = uniqueSorted(rows.map(function(r){return r.district;}).filter(Boolean));
+  var categories = uniqueSorted(rows.map(function(r){return r.category;}).filter(Boolean));
+  var statuses = uniqueSorted(rows.map(function(r){ return r.status ? r.status.trim() : 'Not updated'; }));
+  fillSelect('districtFilter', districts, state.filters.district);
+  fillSelect('categoryFilter', categories, state.filters.category);
+  fillSelect('statusFilter', statuses, state.filters.status);
+}
+function uniqueSorted(arr){ return Array.from(new Set(arr)).sort(); }
+function fillSelect(id, options, current){
+  var el = document.getElementById(id);
+  var keep = options.indexOf(current)>-1 ? current : 'ALL';
+  el.innerHTML = '<option value="ALL">All</option>' + options.map(function(o){ return '<option value="'+escAttr(o)+'">'+escHtml(o)+'</option>'; }).join('');
+  el.value = keep;
+}
+
+/* ===================== Render: KPIs ===================== */
+function renderKPIs(m){
+  var cards = [
+    {label:'Total accounts', value:m.total, sub:'target universe', cls:''},
+    {label:'Visited', value:m.visited, sub:m.coveragePct+'% coverage', cls:'accent-green'},
+    {label:'Not yet visited', value:m.pending, sub:'prioritise these', cls:'accent-gold'},
+    {label:'Overdue follow-ups', value:m.overdue.length, sub:'past next-visit date', cls:'accent-red'},
+    {label:'Due today', value:m.dueToday.length, sub:'call or visit today', cls:'accent-gold'},
+    {label:'Visits this week', value:m.visitsThisWeek, sub:'since Monday', cls:'accent-teal'},
+    {label:'Visits this month', value:m.visitsThisMonth, sub:m.activeDaysThisMonth+' active day(s)', cls:'accent-teal'},
+    {label:'Avg visits / active day', value:m.avgPerActiveDay, sub:'this month', cls:''}
+  ];
+  document.getElementById('kpiGrid').innerHTML = cards.map(function(c){
+    return '<div class="kpi-card '+c.cls+'"><div class="kpi-label">'+c.label+'</div><div class="kpi-value">'+c.value+'</div><div class="kpi-sub">'+c.sub+'</div></div>';
+  }).join('');
+}
+
+/* ===================== Render: Alerts ===================== */
+function classify(r, today){
+  var days = Math.round((startOfDay(r.nextVisitDate) - today) / 86400000);
+  if(days < 0) return { urg:'red', badge:'red', label: Math.abs(days)+' day'+(Math.abs(days)===1?'':'s')+' overdue' };
+  if(days === 0) return { urg:'gold', badge:'gold', label:'Due today' };
+  return { urg:'teal', badge:'teal', label:'in '+days+' day'+(days===1?'':'s') };
+}
+
+function renderAlerts(m){
+  document.getElementById('cntAll').textContent = m.allAlerts.length;
+  document.getElementById('cntOverdue').textContent = m.overdue.length;
+  document.getElementById('cntToday').textContent = m.dueToday.length;
+  document.getElementById('cntUpcoming').textContent = m.upcoming.length;
+
+  var list = { ALL:m.allAlerts, OVERDUE:m.overdue, TODAY:m.dueToday, UPCOMING:m.upcoming }[state.alertTab];
+  var el = document.getElementById('alertList');
+  if(!list.length){ el.innerHTML = '<div class="empty-state">No follow-ups in this view. Add Next Visiting date in the sheet to see alerts here.</div>'; return; }
+
+  el.innerHTML = list.slice(0,60).map(function(r){
+    var c = classify(r, m.today);
+    var contactBits = [];
+    if(r.contact) contactBits.push(escHtml(r.contact));
+    if(r.mobile) contactBits.push('<a href="tel:'+escAttr(r.mobile)+'">'+escHtml(r.mobile)+'</a>');
+    if(r.district || r.place) contactBits.push(escHtml([r.place,r.district].filter(Boolean).join(', ')));
+    return '<div class="alert-row">' +
+      '<span class="urg '+c.urg+'"></span>' +
+      '<div class="main">' +
+        '<div class="company">'+escHtml(r.company||'—')+' <span style="font-weight:400;color:var(--muted);font-size:11.5px;">'+escHtml(r.category||'')+'</span></div>' +
+        '<div class="meta">'+contactBits.join(' &middot; ')+'</div>' +
+        (r.status ? '<div class="status-txt">Status: '+escHtml(r.status)+'</div>' : '') +
+      '</div>' +
+      '<div style="text-align:right;">' +
+        '<div class="badge '+c.badge+'">'+c.label+'</div>' +
+        '<div style="font-size:10.5px;color:var(--muted);margin-top:4px;">'+fullDate(r.nextVisitDate)+'</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+/* ===================== Render: Charts ===================== */
+function destroyChart(key){ if(charts[key]){ charts[key].destroy(); delete charts[key]; } }
+
+function renderTrendChart(m){
+  destroyChart('trend');
+  var vr = m.visitedRows;
+  var bucket = buildTrendBuckets(vr, state.trendRange, m.today);
+  var ctx = document.getElementById('trendChart').getContext('2d');
+  charts.trend = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: bucket.labels, datasets: [{ label:'Visits', data: bucket.data, backgroundColor:'#1E7A7A', borderRadius:4, maxBarThickness:22 }] },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{ y:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'#E2E6ED' } }, x:{ grid:{ display:false }, ticks:{ maxRotation:0, autoSkip:true, font:{size:10} } } }
+    }
+  });
+}
+
+function buildMonthlyVisitConvert(visitedRows, today){
+  var start = seasonStart(today);
+  var monthCount = Math.max(1, (today.getFullYear()-start.getFullYear())*12 + (today.getMonth()-start.getMonth()) + 1);
+  var labels = [], keys = [], visitedCounts = {}, convertedCounts = {};
+  for(var mo=monthCount-1; mo>=0; mo--){
+    var md = new Date(today.getFullYear(), today.getMonth()-mo, 1);
+    var k = md.getFullYear()+'-'+md.getMonth();
+    keys.push(k); labels.push(md.toLocaleDateString('en-GB',{month:'short',year:'2-digit'}));
+    visitedCounts[k]=0; convertedCounts[k]=0;
+  }
+  visitedRows.forEach(function(r){
+    var k = r.visitDate.getFullYear()+'-'+r.visitDate.getMonth();
+    if(k in visitedCounts){ visitedCounts[k]++; if(isConverted(r.status)) convertedCounts[k]++; }
+  });
+  return { labels:labels, visited: keys.map(function(k){return visitedCounts[k];}), converted: keys.map(function(k){return convertedCounts[k];}) };
+}
+
+function renderConvertedChart(m){
+  destroyChart('converted');
+  var b = buildMonthlyVisitConvert(m.visitedRows, m.today);
+  var ctx = document.getElementById('convertedChart').getContext('2d');
+  charts.converted = new Chart(ctx, {
+    type:'bar',
+    data:{ labels:b.labels, datasets:[
+      { label:'Visited', data:b.visited, backgroundColor:'#1E7A7A', borderRadius:4, maxBarThickness:26 },
+      { label:'Converted', data:b.converted, backgroundColor:'#1E7145', borderRadius:4, maxBarThickness:26 }
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth:10, font:{size:10.5}} } },
+      scales:{ y:{ beginAtZero:true, ticks:{precision:0}, grid:{color:'#E2E6ED'} }, x:{ grid:{display:false} } }
+    }
+  });
+}
+
+function renderCharts(m){
+  try{ renderTrendChart(m); }catch(e){ console.error('trend chart failed', e); }
+  try{ renderConvertedChart(m); }catch(e){ console.error('converted chart failed', e); }
+}
+
+/* ===================== Render: Table ===================== */
+var TABLE_COLS = [
+  {key:'company', label:'Company'},
+  {key:'category', label:'Category'},
+  {key:'place', label:'Location'},
+  {key:'contact', label:'Contact'},
+  {key:'mobile', label:'Mobile'},
+  {key:'visitDate', label:'Last visit'},
+  {key:'nextVisitDate', label:'Next visit'},
+  {key:'status', label:'Status'}
+];
+
+function renderTableHead(){
+  document.getElementById('tableHead').innerHTML = TABLE_COLS.map(function(c){
+    var arrow = state.sort.field===c.key ? (state.sort.dir==='asc' ? ' ▲' : ' ▼') : '';
+    return '<th data-key="'+c.key+'">'+c.label+arrow+'</th>';
+  }).join('');
+}
+
+function sortRows(rows){
+  var f = state.sort.field, dir = state.sort.dir === 'asc' ? 1 : -1;
+  return rows.slice().sort(function(a,b){
+    var av=a[f], bv=b[f];
+    if(av instanceof Date || bv instanceof Date){
+      av = av ? av.getTime() : -Infinity; bv = bv ? bv.getTime() : -Infinity;
+      return (av-bv)*dir;
+    }
+    av = (av||'').toString().toLowerCase(); bv = (bv||'').toString().toLowerCase();
+    if(av<bv) return -1*dir; if(av>bv) return 1*dir; return 0;
+  });
+}
+
+function renderTable(filtered){
+  renderTableHead();
+  var sorted = sortRows(filtered);
+  var totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  if(state.page > totalPages) state.page = totalPages;
+  var start = (state.page-1)*PAGE_SIZE;
+  var pageRows = sorted.slice(start, start+PAGE_SIZE);
+
+  var today = startOfDay(new Date());
+  document.getElementById('tableBody').innerHTML = pageRows.map(function(r){
+    var nextCell = '—';
+    if(r.nextVisitDate){
+      var c = classify(r, today);
+      nextCell = '<span class="pill badge '+c.badge+'">'+fullDate(r.nextVisitDate)+'</span>';
+    }
+    var lastCell = r.visitDate ? fullDate(r.visitDate) : '<span class="pill badge grey">Not visited</span>';
+    return '<tr>' +
+      '<td>'+escHtml(r.company||'—')+'</td>' +
+      '<td>'+escHtml(r.category||'—')+'</td>' +
+      '<td>'+escHtml([r.place,r.district].filter(Boolean).join(', ')||'—')+'</td>' +
+      '<td>'+escHtml(r.contact||'—')+'</td>' +
+      '<td>'+(r.mobile ? '<a href="tel:'+escAttr(r.mobile)+'">'+escHtml(r.mobile)+'</a>' : '—')+'</td>' +
+      '<td>'+lastCell+'</td>' +
+      '<td>'+nextCell+'</td>' +
+      '<td>'+escHtml(r.status||'—')+'</td>' +
+    '</tr>';
+  }).join('');
+
+  document.getElementById('pageInfo').textContent = sorted.length ? ('Showing '+(start+1)+'–'+Math.min(start+PAGE_SIZE,sorted.length)+' of '+sorted.length) : 'No matching accounts';
+  document.getElementById('prevPage').disabled = state.page<=1;
+  document.getElementById('nextPage').disabled = state.page>=totalPages;
+}
+
+/* ===================== Escaping ===================== */
+function escHtml(s){ return ('' + s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+function escAttr(s){ return escHtml(s); }
+
+/* ===================== Orchestration ===================== */
+function renderAll(){
+  var filtered = getFilteredRows();
+  var m = computeMetrics(state.rows);
+  state.lastMetrics = m;
+  try{ renderKPIs(m); }catch(e){ console.error('kpi render failed', e); }
+  try{ renderAlerts(m); }catch(e){ console.error('alerts render failed', e); }
+  try{ renderCharts(m); }catch(e){ console.error('charts render failed', e); }
+  try{ renderTable(filtered); }catch(e){ console.error('table render failed', e); }
+  document.getElementById('resultCount').textContent = filtered.length + ' of ' + state.rows.length + ' accounts shown';
+}
+
+function setRows(rows, opts){
+  state.rows = rows;
+  state.usingSample = !!(opts && opts.sample);
+  populateFilterOptions(rows);
+  state.page = 1;
+  renderAll();
+}
+
+function updateDataStatus(live, count, err){
+  var wrap = document.getElementById('dataStatus');
+  var text = document.getElementById('dataStatusText');
+  if(err){
+    wrap.classList.remove('live');
+    text.textContent = 'Could not load sheet (' + err + ') — showing last known data';
+  } else if(live){
+    wrap.classList.add('live');
+    text.textContent = 'Live from Google Sheet · ' + count + ' rows · updated ' + new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  } else {
+    wrap.classList.remove('live');
+    text.textContent = 'Using sample data — connect your Google Sheet to go live';
+  }
+}
+
+async function fetchSheet(url, opts){
+  var modalStatus = document.getElementById('modalStatus');
+  if(opts && opts.fromModal){ modalStatus.textContent = 'Loading…'; modalStatus.className = 'modal-status'; }
+  try{
+    var res = await fetch(url, { cache:'no-store' });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    var text = await res.text();
+    var rows = ingestCSV(text);
+    if(!rows.length) throw new Error('no rows found — check the sheet is published as CSV');
+    setRows(rows, { sample:false });
+    state.sheetUrl = url;
+    await saveUrl(url);
+    updateDataStatus(true, rows.length);
+    if(opts && opts.fromModal){
+      modalStatus.textContent = 'Connected — loaded ' + rows.length + ' accounts.';
+      modalStatus.className = 'modal-status ok';
+      setTimeout(closeModal, 900);
+    }
+  }catch(e){
+    updateDataStatus(false, null, e.message);
+    if(opts && opts.fromModal){
+      modalStatus.textContent = 'Could not load that link: ' + e.message;
+      modalStatus.className = 'modal-status err';
+    }
+  }
+}
+
+function openModal(){ document.getElementById('modalOverlay').classList.add('open'); document.getElementById('modalStatus').textContent=''; document.getElementById('modalStatus').className='modal-status'; }
+function closeModal(){ document.getElementById('modalOverlay').classList.remove('open'); }
+
+/* ===================== Events ===================== */
+document.getElementById('connectBtn').addEventListener('click', openModal);
+document.getElementById('modalClose').addEventListener('click', closeModal);
+document.getElementById('modalOverlay').addEventListener('click', function(e){ if(e.target.id==='modalOverlay') closeModal(); });
+document.getElementById('saveSheetBtn').addEventListener('click', function(){
+  var url = document.getElementById('sheetUrlInput').value.trim();
+  if(!url){ var ms=document.getElementById('modalStatus'); ms.textContent='Paste a published CSV link first.'; ms.className='modal-status err'; return; }
+  fetchSheet(url, { fromModal:true });
+});
+document.getElementById('useSampleBtn').addEventListener('click', async function(){
+  state.sheetUrl = null;
+  await clearSavedUrl();
+  setRows(window.__SEED_DATA__.map(finalizeRow), { sample:true });
+  updateDataStatus(false);
+  closeModal();
+});
+document.getElementById('refreshBtn').addEventListener('click', function(){
+  if(state.sheetUrl) fetchSheet(state.sheetUrl);
+  else renderAll();
+});
+
+['districtFilter','categoryFilter','statusFilter','visitFilter'].forEach(function(id){
+  document.getElementById(id).addEventListener('change', function(e){
+    var map = { districtFilter:'district', categoryFilter:'category', statusFilter:'status', visitFilter:'visit' };
+    state.filters[map[id]] = e.target.value;
+    state.page = 1;
+    renderAll();
+  });
+});
+document.getElementById('resetFilters').addEventListener('click', function(){
+  state.filters = { district:'ALL', category:'ALL', status:'ALL', visit:'ALL' };
+  ['districtFilter','categoryFilter','statusFilter','visitFilter'].forEach(function(id){ document.getElementById(id).value='ALL'; });
+  state.page=1;
+  renderAll();
+});
+
+document.getElementById('alertTabs').addEventListener('click', function(e){
+  var t = e.target.closest('.alert-chip');
+  if(!t) return;
+  state.alertTab = t.getAttribute('data-tab');
+  document.querySelectorAll('.alert-chip').forEach(function(c){ c.classList.remove('active'); });
+  t.classList.add('active');
+  renderAlerts(state.lastMetrics);
+});
+
+document.querySelectorAll('.panel-head .tabs .tab-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.panel-head .tabs .tab-btn').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    state.trendRange = btn.getAttribute('data-range');
+    if(state.lastMetrics) renderTrendChart(state.lastMetrics);
+  });
+});
+
+document.getElementById('tableHead').addEventListener('click', function(e){
+  var th = e.target.closest('th');
+  if(!th) return;
+  var key = th.getAttribute('data-key');
+  if(state.sort.field===key){ state.sort.dir = state.sort.dir==='asc' ? 'desc' : 'asc'; }
+  else { state.sort.field = key; state.sort.dir = 'asc'; }
+  renderTable(getFilteredRows());
+});
+document.getElementById('prevPage').addEventListener('click', function(){ if(state.page>1){ state.page--; renderTable(getFilteredRows()); } });
+document.getElementById('nextPage').addEventListener('click', function(){ state.page++; renderTable(getFilteredRows()); });
+
+document.getElementById('aboutLink').addEventListener('click', function(){
+  alert('This dashboard reads the tracker sheet columns (Company, Category, District, Place, Contact, Mobile, Visiting date, Next Visiting date, Status, Remarks). "Last visit" is whatever date is currently in the Visiting date column, so update it each time your rep visits an account. Next Visiting date drives the follow-up alerts. Connect a published Google Sheet CSV link via "Connect Google Sheet" so updates made there show up here after Refresh.');
+});
+
+/* ===================== Init ===================== */
+var DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQnRHPnTmun-kUmR5JkPd8_C4ROoKd2p917meUH83g5leixOnkoMBsM1pltFviSQhk9qqB04DCiirbB/pub?output=csv";
+
+(async function init(){
+  setRows(window.__SEED_DATA__.map(finalizeRow), { sample:true });
+  var saved = await loadSavedUrl();
+  var urlToLoad = saved || DEFAULT_SHEET_URL;
+  document.getElementById('sheetUrlInput').value = urlToLoad;
+  await fetchSheet(urlToLoad);
+  setInterval(function(){ if(state.sheetUrl) fetchSheet(state.sheetUrl); }, 5*60*1000);
+})();
+
+</script>
+</body>
+</html>
