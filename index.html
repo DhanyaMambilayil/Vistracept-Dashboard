@@ -203,7 +203,7 @@ footer a{color:var(--teal);cursor:pointer;text-decoration:underline;}
     <div class="panel-head">
       <div>
         <h2>Follow-up alerts</h2>
-        <div class="panel-sub" style="margin-left:15px;">Accounts with a next-visit date coming up, sorted by urgency</div>
+        <div class="panel-sub" style="margin-left:15px;">Accounts with a next-visit date coming up, sorted by urgency — excludes Sales Successful and Not Interested</div>
       </div>
       <div class="alert-tabs" id="alertTabs">
         <span class="alert-chip all active" data-tab="ALL">All<span class="n" id="cntAll">0</span></span>
@@ -428,6 +428,11 @@ function buildTrendBuckets(visitedRows, mode, today){
   return { labels: labels, data: keys.map(function(k){ return counts[k]; }) };
 }
 
+function isClosedStatus(status){
+  var s = status ? status.trim().toLowerCase() : '';
+  return s === 'sales successful' || s === 'not interested';
+}
+
 function computeMetrics(rows){
   var today = startOfDay(new Date());
   var total = rows.length;
@@ -436,7 +441,7 @@ function computeMetrics(rows){
   var pending = total - visited;
   var coveragePct = total ? Math.round(visited/total*100) : 0;
 
-  var withNext = rows.filter(function(r){ return r.nextVisitDate; });
+  var withNext = rows.filter(function(r){ return r.nextVisitDate && !isClosedStatus(r.status); });
   var overdue = withNext.filter(function(r){ return r.nextVisitDate < today && !sameDay(r.nextVisitDate,today); }).sort(function(a,b){ return a.nextVisitDate-b.nextVisitDate; });
   var dueToday = withNext.filter(function(r){ return sameDay(r.nextVisitDate,today); });
   var in7 = new Date(today); in7.setDate(in7.getDate()+7);
@@ -480,13 +485,17 @@ function computeMetrics(rows){
   var neverVisited = rows.filter(function(r){ return !r.visitDate; })
     .sort(function(a,b){ return (a.category||'').localeCompare(b.category||'') || a.company.localeCompare(b.company); });
 
+  var convertedRows = rows.filter(function(r){ return isConverted(r.status); });
+  var convertedCount = convertedRows.length;
+
   return {
     total:total, visited:visited, pending:pending, coveragePct:coveragePct,
     overdue:overdue, dueToday:dueToday, upcoming:upcoming, allAlerts:allAlerts,
     visitsToday:visitsToday, visitsThisWeek:visitsThisWeek, visitsThisMonth:visitsThisMonth,
     activeDaysThisMonth:activeDaysThisMonth, avgPerActiveDay:avgPerActiveDay,
     catMap:catMap, distMap:distMap, statusMap:statusMap,
-    neverVisited:neverVisited, visitedRows:visitedRows, today:today
+    neverVisited:neverVisited, visitedRows:visitedRows, today:today,
+    convertedCount:convertedCount, convertedRows:convertedRows
   };
 }
 
@@ -506,7 +515,7 @@ function getFilteredRows(){
   });
 }
 
-function isConverted(status){ return !!(status && /convert|success/i.test(status)); }
+function isConverted(status){ return !!(status && status.trim().toLowerCase() === 'sales successful'); }
 
 function populateFilterOptions(rows){
   var districts = uniqueSorted(rows.map(function(r){return r.district;}).filter(Boolean));
@@ -529,7 +538,7 @@ function renderKPIs(m){
   var cards = [
     {label:'Total accounts', value:m.total, sub:'target universe', cls:''},
     {label:'Visited', value:m.visited, sub:m.coveragePct+'% coverage', cls:'accent-green'},
-    {label:'Not yet visited', value:m.pending, sub:'prioritise these', cls:'accent-gold'},
+    {label:'Converted', value:m.convertedCount, sub:'status: Sales Successful', cls:'accent-green'},
     {label:'Overdue follow-ups', value:m.overdue.length, sub:'past next-visit date', cls:'accent-red'},
     {label:'Due today', value:m.dueToday.length, sub:'call or visit today', cls:'accent-gold'},
     {label:'Visits this week', value:m.visitsThisWeek, sub:'since Monday', cls:'accent-teal'},
