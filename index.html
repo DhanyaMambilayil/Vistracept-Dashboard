@@ -54,7 +54,7 @@ header.top{
 .brand-title h1{color:#fff;font-size:26px;font-weight:600;}
 .brand-title .sub{color:#B9C3D6;font-size:12.5px;margin-top:5px;font-family:var(--font-body);}
 .header-right{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
-.data-status{font-size:11px;color:#B9C3D6;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer;}
+.data-status{font-size:11px;color:#B9C3D6;font-weight:600;display:flex;align-items:center;gap:6px;}
 .data-status .dot{width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block;}
 .data-status.live .dot{background:#6FE3A6;}
 .data-status.error{color:#F3B9B9;}
@@ -173,23 +173,6 @@ table.data-table tr:hover td{background:var(--page);}
 .pagination{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:12px;color:var(--muted);}
 .pagination .pg-btns{display:flex;gap:6px;}
 
-/* ---------- Modal ---------- */
-.modal-overlay{
-  position:fixed;inset:0;background:rgba(10,31,68,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;
-}
-.modal-overlay.open{display:flex;}
-.modal{background:#fff;border-radius:14px;max-width:520px;width:100%;padding:26px 26px 22px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
-.modal h3{font-size:18px;margin-bottom:4px;}
-.modal p{font-size:12.5px;color:var(--muted);line-height:1.6;}
-.modal ol{font-size:12.5px;color:var(--ink-soft);line-height:1.8;padding-left:18px;}
-.modal input[type="text"]{
-  width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);font-size:12.5px;margin:10px 0 6px;font-family:var(--font-body);
-}
-.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
-.modal-close{position:absolute;top:16px;right:20px;cursor:pointer;color:var(--muted);font-size:20px;line-height:1;}
-.modal-status{font-size:12px;font-weight:600;margin-top:8px;}
-.modal-status.ok{color:var(--green);} .modal-status.err{color:var(--red);}
-
 footer{max-width:1500px;margin:10px auto 30px;padding:0 28px;font-size:11.5px;color:var(--muted);text-align:center;}
 footer a{color:var(--teal);cursor:pointer;text-decoration:underline;}
 
@@ -204,10 +187,9 @@ footer a{color:var(--teal);cursor:pointer;text-decoration:underline;}
       <div class="sub" id="dashSub">Territory coverage, follow-up alerts &amp; visit productivity</div>
     </div>
     <div class="header-right">
-      <div class="data-status" id="dataStatus"><span class="dot"></span><span id="dataStatusText">Using sample data — connect your Google Sheet to go live</span></div>
+      <div class="data-status" id="dataStatus"><span class="dot"></span><span id="dataStatusText">Loading…</span></div>
       <div class="header-btns">
         <button class="btn small" id="refreshBtn">Refresh</button>
-        <button class="btn primary small" id="connectBtn">Connect Google Sheet</button>
       </div>
     </div>
   </div>
@@ -291,30 +273,6 @@ footer a{color:var(--teal);cursor:pointer;text-decoration:underline;}
     </div>
   </div>
 
-  <footer>
-    Visit date is treated as the most recently recorded visit for each account. Connect your published Google Sheet for live updates — <a id="aboutLink">how this works</a>.
-  </footer>
-</div>
-
-<div class="modal-overlay" id="modalOverlay">
-  <div class="modal" style="position:relative;">
-    <span class="modal-close" id="modalClose">&times;</span>
-    <h3>Connect your Google Sheet</h3>
-    <p>Publish the tracker sheet to the web as CSV, then paste the link below. The dashboard will read live from it — every time your salesperson updates the sheet, hit Refresh (or reload) here to see it.</p>
-    <p style="background:#FCEFD9;border-radius:8px;padding:10px 12px;color:#8A5A16;">If you're viewing this inside Claude's chat preview and the connection keeps failing, that's expected — the preview sandbox blocks live requests to outside sites. <b>Download this HTML file and open it directly in a browser</b> (double-click it, or host it anywhere) and the same link will connect normally.</p>
-    <ol>
-      <li>Open the Google Sheet &rarr; <b>File &rarr; Share &rarr; Publish to web</b></li>
-      <li>Under "Link", choose the tracker sheet/tab and set format to <b>Comma-separated values (.csv)</b></li>
-      <li>Click <b>Publish</b>, then copy the generated link</li>
-      <li>Paste it below and click Save &amp; Load</li>
-    </ol>
-    <input type="text" id="sheetUrlInput" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?output=csv">
-    <div class="modal-status" id="modalStatus"></div>
-    <div class="modal-actions">
-      <button class="btn ghost small" id="useSampleBtn">Use sample data instead</button>
-      <button class="btn primary small" id="saveSheetBtn">Save &amp; Load</button>
-    </div>
-  </div>
 </div>
 
 <script>
@@ -422,23 +380,6 @@ function rawCsvRowToCanon(raw){
 function ingestCSV(text){
   var parsed = Papa.parse(text, { header:true, skipEmptyLines:true });
   return parsed.data.map(rawCsvRowToCanon).filter(function(r){ return r.company || r.category; });
-}
-
-/* ===================== Storage (best-effort) ===================== */
-async function loadSavedUrl(){
-  try{
-    if(window.storage){
-      var res = await window.storage.get('sheetUrl', false);
-      if(res && res.value) return res.value;
-    }
-  }catch(e){}
-  return null;
-}
-async function saveUrl(url){
-  try{ if(window.storage){ await window.storage.set('sheetUrl', url, false); } }catch(e){}
-}
-async function clearSavedUrl(){
-  try{ if(window.storage){ await window.storage.delete('sheetUrl', false); } }catch(e){}
 }
 
 /* ===================== Metrics ===================== */
@@ -781,20 +722,18 @@ function updateDataStatus(live, count, err){
   if(err){
     wrap.classList.remove('live');
     wrap.classList.add('error');
-    text.textContent = 'Could not load the live sheet — showing sample data (tap for details)';
+    text.textContent = 'Could not load the live sheet — showing sample data';
   } else if(live){
     wrap.classList.remove('error');
     wrap.classList.add('live');
-    text.textContent = 'Live from Google Sheet · ' + count + ' rows · updated ' + new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    text.textContent = 'Live from Google Sheet';
   } else {
     wrap.classList.remove('live'); wrap.classList.remove('error');
-    text.textContent = 'Using sample data — connect your Google Sheet to go live';
+    text.textContent = 'Using sample data';
   }
 }
 
-async function fetchSheet(url, opts){
-  var modalStatus = document.getElementById('modalStatus');
-  if(opts && opts.fromModal){ modalStatus.textContent = 'Loading…'; modalStatus.className = 'modal-status'; }
+async function fetchSheet(url){
   try{
     var res = await fetch(url, { cache:'no-store' });
     if(!res.ok) throw new Error('HTTP ' + res.status);
@@ -803,48 +742,14 @@ async function fetchSheet(url, opts){
     if(!rows.length) throw new Error('no rows found — check the sheet is published as CSV');
     setRows(rows, { sample:false });
     state.sheetUrl = url;
-    await saveUrl(url);
     updateDataStatus(true, rows.length);
-    if(opts && opts.fromModal){
-      modalStatus.textContent = 'Connected — loaded ' + rows.length + ' accounts.';
-      modalStatus.className = 'modal-status ok';
-      setTimeout(closeModal, 900);
-    }
   }catch(e){
     state.lastError = e.message;
     updateDataStatus(false, null, e.message);
-    if(opts && opts.fromModal){
-      modalStatus.textContent = 'Could not load that link: ' + e.message;
-      modalStatus.className = 'modal-status err';
-    }
   }
 }
 
-function openModal(){
-  document.getElementById('modalOverlay').classList.add('open');
-  var ms = document.getElementById('modalStatus');
-  if(state.lastError){ ms.textContent = 'Last attempt failed: ' + state.lastError; ms.className = 'modal-status err'; }
-  else { ms.textContent=''; ms.className='modal-status'; }
-}
-function closeModal(){ document.getElementById('modalOverlay').classList.remove('open'); }
-
 /* ===================== Events ===================== */
-document.getElementById('connectBtn').addEventListener('click', openModal);
-document.getElementById('dataStatus').addEventListener('click', openModal);
-document.getElementById('modalClose').addEventListener('click', closeModal);
-document.getElementById('modalOverlay').addEventListener('click', function(e){ if(e.target.id==='modalOverlay') closeModal(); });
-document.getElementById('saveSheetBtn').addEventListener('click', function(){
-  var url = document.getElementById('sheetUrlInput').value.trim();
-  if(!url){ var ms=document.getElementById('modalStatus'); ms.textContent='Paste a published CSV link first.'; ms.className='modal-status err'; return; }
-  fetchSheet(url, { fromModal:true });
-});
-document.getElementById('useSampleBtn').addEventListener('click', async function(){
-  state.sheetUrl = null;
-  await clearSavedUrl();
-  setRows(window.__SEED_DATA__.map(finalizeRow), { sample:true });
-  updateDataStatus(false);
-  closeModal();
-});
 document.getElementById('refreshBtn').addEventListener('click', function(){
   if(state.sheetUrl) fetchSheet(state.sheetUrl);
   else renderAll();
@@ -894,19 +799,12 @@ document.getElementById('tableHead').addEventListener('click', function(e){
 document.getElementById('prevPage').addEventListener('click', function(){ if(state.page>1){ state.page--; renderTable(getFilteredRows()); } });
 document.getElementById('nextPage').addEventListener('click', function(){ state.page++; renderTable(getFilteredRows()); });
 
-document.getElementById('aboutLink').addEventListener('click', function(){
-  alert('This dashboard reads the tracker sheet columns (Company, Category, District, Place, Contact, Mobile, Visiting date, Next Visiting date, Status, Remarks). "Last visit" is whatever date is currently in the Visiting date column, so update it each time your rep visits an account. Next Visiting date drives the follow-up alerts. Connect a published Google Sheet CSV link via "Connect Google Sheet" so updates made there show up here after Refresh.');
-});
-
 /* ===================== Init ===================== */
 var DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQnRHPnTmun-kUmR5JkPd8_C4ROoKd2p917meUH83g5leixOnkoMBsM1pltFviSQhk9qqB04DCiirbB/pub?output=csv";
 
 (async function init(){
   setRows(window.__SEED_DATA__.map(finalizeRow), { sample:true });
-  var saved = await loadSavedUrl();
-  var urlToLoad = saved || DEFAULT_SHEET_URL;
-  document.getElementById('sheetUrlInput').value = urlToLoad;
-  await fetchSheet(urlToLoad);
+  await fetchSheet(DEFAULT_SHEET_URL);
   setInterval(function(){ if(state.sheetUrl) fetchSheet(state.sheetUrl); }, 5*60*1000);
 })();
 
