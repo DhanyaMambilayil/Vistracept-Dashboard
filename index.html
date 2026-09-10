@@ -54,9 +54,11 @@ header.top{
 .brand-title h1{color:#fff;font-size:26px;font-weight:600;}
 .brand-title .sub{color:#B9C3D6;font-size:12.5px;margin-top:5px;font-family:var(--font-body);}
 .header-right{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
-.data-status{font-size:11px;color:#B9C3D6;font-weight:600;display:flex;align-items:center;gap:6px;}
+.data-status{font-size:11px;color:#B9C3D6;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer;}
 .data-status .dot{width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block;}
 .data-status.live .dot{background:#6FE3A6;}
+.data-status.error{color:#F3B9B9;}
+.data-status.error .dot{background:#E15A3C;}
 .header-btns{display:flex;gap:8px;}
 .btn{
   font-family:var(--font-body);font-size:12.5px;font-weight:600;padding:8px 14px;border-radius:8px;
@@ -249,7 +251,7 @@ footer a{color:var(--teal);cursor:pointer;text-decoration:underline;}
 
     <div class="panel">
       <h2>Visited vs. converted</h2>
-      <div class="panel-sub" style="margin-left:15px;">Monthly totals since September — a visit counts as converted when its Status mentions "converted"</div>
+      <div class="panel-sub" style="margin-left:15px;">September through December — a visit counts as converted when its Status mentions "converted"</div>
       <div class="chart-wrap tall"><canvas id="convertedChart"></canvas></div>
     </div>
   </div>
@@ -299,6 +301,7 @@ footer a{color:var(--teal);cursor:pointer;text-decoration:underline;}
     <span class="modal-close" id="modalClose">&times;</span>
     <h3>Connect your Google Sheet</h3>
     <p>Publish the tracker sheet to the web as CSV, then paste the link below. The dashboard will read live from it — every time your salesperson updates the sheet, hit Refresh (or reload) here to see it.</p>
+    <p style="background:#FCEFD9;border-radius:8px;padding:10px 12px;color:#8A5A16;">If you're viewing this inside Claude's chat preview and the connection keeps failing, that's expected — the preview sandbox blocks live requests to outside sites. <b>Download this HTML file and open it directly in a browser</b> (double-click it, or host it anywhere) and the same link will connect normally.</p>
     <ol>
       <li>Open the Google Sheet &rarr; <b>File &rarr; Share &rarr; Publish to web</b></li>
       <li>Under "Link", choose the tracker sheet/tab and set format to <b>Comma-separated values (.csv)</b></li>
@@ -629,8 +632,12 @@ function renderTrendChart(m){
   var bucket = buildTrendBuckets(vr, state.trendRange, m.today);
   var ctx = document.getElementById('trendChart').getContext('2d');
   charts.trend = new Chart(ctx, {
-    type: 'bar',
-    data: { labels: bucket.labels, datasets: [{ label:'Visits', data: bucket.data, backgroundColor:'#1E7A7A', borderRadius:4, maxBarThickness:22 }] },
+    type: 'line',
+    data: { labels: bucket.labels, datasets: [{
+      label:'Visits', data: bucket.data,
+      borderColor:'#1E7A7A', backgroundColor:'rgba(30,122,122,.15)',
+      fill:true, tension:0.3, pointRadius:3, pointBackgroundColor:'#1E7A7A', pointBorderColor:'#fff', pointBorderWidth:1.5, borderWidth:2.5
+    }] },
     options: {
       responsive:true, maintainAspectRatio:false,
       plugins:{ legend:{display:false} },
@@ -641,10 +648,10 @@ function renderTrendChart(m){
 
 function buildMonthlyVisitConvert(visitedRows, today){
   var start = seasonStart(today);
-  var monthCount = Math.max(1, (today.getFullYear()-start.getFullYear())*12 + (today.getMonth()-start.getMonth()) + 1);
+  var endYear = start.getFullYear();
   var labels = [], keys = [], visitedCounts = {}, convertedCounts = {};
-  for(var mo=monthCount-1; mo>=0; mo--){
-    var md = new Date(today.getFullYear(), today.getMonth()-mo, 1);
+  for(var mo=8; mo<=11; mo++){ // September through December
+    var md = new Date(endYear, mo, 1);
     var k = md.getFullYear()+'-'+md.getMonth();
     keys.push(k); labels.push(md.toLocaleDateString('en-GB',{month:'short',year:'2-digit'}));
     visitedCounts[k]=0; convertedCounts[k]=0;
@@ -663,7 +670,7 @@ function renderConvertedChart(m){
   charts.converted = new Chart(ctx, {
     type:'bar',
     data:{ labels:b.labels, datasets:[
-      { label:'Visited', data:b.visited, backgroundColor:'#1E7A7A', borderRadius:4, maxBarThickness:26 },
+      { label:'Visited', data:b.visited, backgroundColor:'#E8A33D', borderRadius:4, maxBarThickness:26 },
       { label:'Converted', data:b.converted, backgroundColor:'#1E7145', borderRadius:4, maxBarThickness:26 }
     ]},
     options:{
@@ -773,12 +780,14 @@ function updateDataStatus(live, count, err){
   var text = document.getElementById('dataStatusText');
   if(err){
     wrap.classList.remove('live');
-    text.textContent = 'Could not load sheet (' + err + ') — showing last known data';
+    wrap.classList.add('error');
+    text.textContent = 'Could not load the live sheet — showing sample data (tap for details)';
   } else if(live){
+    wrap.classList.remove('error');
     wrap.classList.add('live');
     text.textContent = 'Live from Google Sheet · ' + count + ' rows · updated ' + new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   } else {
-    wrap.classList.remove('live');
+    wrap.classList.remove('live'); wrap.classList.remove('error');
     text.textContent = 'Using sample data — connect your Google Sheet to go live';
   }
 }
@@ -802,6 +811,7 @@ async function fetchSheet(url, opts){
       setTimeout(closeModal, 900);
     }
   }catch(e){
+    state.lastError = e.message;
     updateDataStatus(false, null, e.message);
     if(opts && opts.fromModal){
       modalStatus.textContent = 'Could not load that link: ' + e.message;
@@ -810,11 +820,17 @@ async function fetchSheet(url, opts){
   }
 }
 
-function openModal(){ document.getElementById('modalOverlay').classList.add('open'); document.getElementById('modalStatus').textContent=''; document.getElementById('modalStatus').className='modal-status'; }
+function openModal(){
+  document.getElementById('modalOverlay').classList.add('open');
+  var ms = document.getElementById('modalStatus');
+  if(state.lastError){ ms.textContent = 'Last attempt failed: ' + state.lastError; ms.className = 'modal-status err'; }
+  else { ms.textContent=''; ms.className='modal-status'; }
+}
 function closeModal(){ document.getElementById('modalOverlay').classList.remove('open'); }
 
 /* ===================== Events ===================== */
 document.getElementById('connectBtn').addEventListener('click', openModal);
+document.getElementById('dataStatus').addEventListener('click', openModal);
 document.getElementById('modalClose').addEventListener('click', closeModal);
 document.getElementById('modalOverlay').addEventListener('click', function(e){ if(e.target.id==='modalOverlay') closeModal(); });
 document.getElementById('saveSheetBtn').addEventListener('click', function(){
