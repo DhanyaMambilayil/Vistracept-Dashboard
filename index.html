@@ -119,6 +119,10 @@ header.top{
 }
 .tab-btn.active{background:var(--navy-deep);border-color:var(--navy-deep);color:#fff;}
 
+.series-toggles{display:flex;gap:16px;margin:8px 0 4px 15px;}
+.series-toggles label{font-size:12px;color:var(--ink-soft);font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer;}
+.series-toggles input[type="checkbox"]{accent-color:var(--teal);width:14px;height:14px;cursor:pointer;}
+
 .sub-chart-title{font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
 .sub-chart-title .swatch{width:9px;height:9px;border-radius:50%;display:inline-block;}
 
@@ -229,20 +233,11 @@ footer a{color:var(--teal);cursor:pointer;text-decoration:underline;}
         <span class="tab-btn" data-range="monthly">Monthly</span>
       </div>
     </div>
-    <div class="grid-3">
-      <div class="sub-chart">
-        <div class="sub-chart-title"><span class="swatch" style="background:#E8A33D;"></span>New visits</div>
-        <div class="chart-wrap"><canvas id="newChart"></canvas></div>
-      </div>
-      <div class="sub-chart">
-        <div class="sub-chart-title"><span class="swatch" style="background:#1E7A7A;"></span>Follow-up visits</div>
-        <div class="chart-wrap"><canvas id="followUpChart"></canvas></div>
-      </div>
-      <div class="sub-chart">
-        <div class="sub-chart-title"><span class="swatch" style="background:#2E4372;"></span>Total visits</div>
-        <div class="chart-wrap"><canvas id="totalChart"></canvas></div>
-      </div>
+    <div class="series-toggles">
+      <label><input type="checkbox" id="toggleNew" checked> New visits</label>
+      <label><input type="checkbox" id="toggleFollowUp" checked> Follow-up visits</label>
     </div>
+    <div class="chart-wrap tall"><canvas id="trendChart"></canvas></div>
   </div>
 
   <div class="panel">
@@ -325,6 +320,8 @@ var state = {
   filters: { district:'ALL', category:'ALL', status:'ALL', visit:'ALL' },
   alertTab: 'ALL',
   trendRange: 'weekly',
+  showNew: true,
+  showFollowUp: true,
   sort: { field:'nextVisitDate', dir:'asc' },
   page: 1,
   lastMetrics: null
@@ -619,53 +616,32 @@ function renderAlerts(m){
 function destroyChart(key){ if(charts[key]){ charts[key].destroy(); delete charts[key]; } }
 
 function renderTrendChart(m){
+  destroyChart('trend');
   var vr = m.visitedRows;
   var bucket = buildTrendBuckets(vr, state.trendRange, m.today);
-
-  destroyChart('newChart');
-  var ctxNew = document.getElementById('newChart').getContext('2d');
-  charts.newChart = new Chart(ctxNew, {
+  var ctx = document.getElementById('trendChart').getContext('2d');
+  charts.trend = new Chart(ctx, {
     type: 'line',
-    data: { labels: bucket.labels, datasets: [{
-      label:'New visits', data: bucket.newVisits,
-      borderColor:'#E8A33D', backgroundColor:'rgba(232,163,61,.15)',
-      fill:true, tension:0.3, pointRadius:3, pointBackgroundColor:'#E8A33D', pointBorderColor:'#fff', pointBorderWidth:1.5, borderWidth:2.5
-    }] },
+    data: { labels: bucket.labels, datasets: [
+      {
+        label:'Total visits', data: bucket.total,
+        borderColor:'#2E4372', backgroundColor:'rgba(46,67,114,.10)',
+        fill:false, tension:0.3, pointRadius:3, pointBackgroundColor:'#2E4372', pointBorderColor:'#fff', pointBorderWidth:1.5, borderWidth:2.5
+      },
+      {
+        label:'New visits', data: bucket.newVisits, hidden: !state.showNew,
+        borderColor:'#E8A33D', backgroundColor:'rgba(232,163,61,.15)',
+        fill:true, tension:0.3, pointRadius:3, pointBackgroundColor:'#E8A33D', pointBorderColor:'#fff', pointBorderWidth:1.5, borderWidth:2.5
+      },
+      {
+        label:'Follow-up visits', data: bucket.followUp, hidden: !state.showFollowUp,
+        borderColor:'#1E7A7A', backgroundColor:'rgba(30,122,122,.15)',
+        fill:true, tension:0.3, pointRadius:3, pointBackgroundColor:'#1E7A7A', pointBorderColor:'#fff', pointBorderWidth:1.5, borderWidth:2.5
+      }
+    ] },
     options: {
       responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false} },
-      scales:{ y:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'#E2E6ED' } }, x:{ grid:{ display:false }, ticks:{ maxRotation:0, autoSkip:true, font:{size:10} } } }
-    }
-  });
-
-  destroyChart('followUpChart');
-  var ctxFollow = document.getElementById('followUpChart').getContext('2d');
-  charts.followUpChart = new Chart(ctxFollow, {
-    type: 'line',
-    data: { labels: bucket.labels, datasets: [{
-      label:'Follow-up visits', data: bucket.followUp,
-      borderColor:'#1E7A7A', backgroundColor:'rgba(30,122,122,.15)',
-      fill:true, tension:0.3, pointRadius:3, pointBackgroundColor:'#1E7A7A', pointBorderColor:'#fff', pointBorderWidth:1.5, borderWidth:2.5
-    }] },
-    options: {
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false} },
-      scales:{ y:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'#E2E6ED' } }, x:{ grid:{ display:false }, ticks:{ maxRotation:0, autoSkip:true, font:{size:10} } } }
-    }
-  });
-
-  destroyChart('totalChart');
-  var ctxTotal = document.getElementById('totalChart').getContext('2d');
-  charts.totalChart = new Chart(ctxTotal, {
-    type: 'line',
-    data: { labels: bucket.labels, datasets: [{
-      label:'Total visits', data: bucket.total,
-      borderColor:'#2E4372', backgroundColor:'rgba(46,67,114,.12)',
-      fill:true, tension:0.3, pointRadius:3, pointBackgroundColor:'#2E4372', pointBorderColor:'#fff', pointBorderWidth:1.5, borderWidth:2.5
-    }] },
-    options: {
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false} },
+      plugins:{ legend:{ display:true, position:'bottom', labels:{boxWidth:10, font:{size:10.5}}, onClick:function(){} } },
       scales:{ y:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'#E2E6ED' } }, x:{ grid:{ display:false }, ticks:{ maxRotation:0, autoSkip:true, font:{size:10} } } }
     }
   });
@@ -870,6 +846,15 @@ document.querySelectorAll('.panel-head .tabs .tab-btn').forEach(function(btn){
     state.trendRange = btn.getAttribute('data-range');
     if(state.lastMetrics) renderTrendChart(state.lastMetrics);
   });
+});
+
+document.getElementById('toggleNew').addEventListener('change', function(e){
+  state.showNew = e.target.checked;
+  if(state.lastMetrics) renderTrendChart(state.lastMetrics);
+});
+document.getElementById('toggleFollowUp').addEventListener('change', function(e){
+  state.showFollowUp = e.target.checked;
+  if(state.lastMetrics) renderTrendChart(state.lastMetrics);
 });
 
 document.getElementById('tableHead').addEventListener('click', function(e){
