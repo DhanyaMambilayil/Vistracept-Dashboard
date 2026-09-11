@@ -236,10 +236,11 @@ footer a{color:var(--teal);cursor:pointer;text-decoration:underline;}
       <div class="panel-head">
         <div>
           <h2>Visit productivity</h2>
-          <div class="panel-sub" style="margin-left:15px;">New, follow-up &amp; total visits — day-by-day for the last week, or totals by month (Sep–Dec)<br><span id="productivitySourceNote" style="color:var(--muted);"></span></div>
+          <div class="panel-sub" style="margin-left:15px;">New, follow-up &amp; total visits — day-by-day for the last week or a chosen month, or totals by month (Sep–Dec)<br><span id="productivitySourceNote" style="color:var(--muted);"></span></div>
         </div>
         <div class="tabs">
           <span class="tab-btn active" data-range="weekly">Weekly</span>
+          <span class="tab-btn" data-range="byMonth">By day</span>
           <span class="tab-btn" data-range="monthly">Monthly</span>
         </div>
       </div>
@@ -247,6 +248,12 @@ footer a{color:var(--teal);cursor:pointer;text-decoration:underline;}
         <label><input type="checkbox" id="toggleTotal" checked> Total visits</label>
         <label><input type="checkbox" id="toggleNew" checked> New visits</label>
         <label><input type="checkbox" id="toggleFollowUp" checked> Follow-up visits</label>
+        <select id="monthPicker" style="display:none;margin-left:auto;font-size:12px;padding:5px 9px;border-radius:7px;border:1px solid var(--line);">
+          <option value="8">September</option>
+          <option value="9">October</option>
+          <option value="10">November</option>
+          <option value="11">December</option>
+        </select>
       </div>
       <div class="chart-wrap tall"><canvas id="trendChart"></canvas></div>
     </div>
@@ -355,6 +362,7 @@ var state = {
   filters: { district:'ALL', category:'ALL', status:'ALL', visit:'ALL' },
   alertTab: 'ALL',
   trendRange: 'weekly',
+  selectedMonth: null, // set at init to the current month, clamped into Sep–Dec
   showTotal: true,
   showNew: true,
   showFollowUp: true,
@@ -558,13 +566,25 @@ function finalizeSeedVisitLogRow(obj){
 /* ===================== Metrics ===================== */
 function seasonStart(today){ return new Date(today.getFullYear(), 8, 1); } // 1 September
 
-function buildTrendBuckets(events, mode, today){
+function buildTrendBuckets(events, mode, today, selectedMonth){
   var labels = [], keys = [], total = {}, newV = {}, followV = {};
   if(mode === 'weekly'){
     for(var i=6;i>=0;i--){ var d=new Date(today); d.setDate(d.getDate()-i); var k=d.toDateString(); keys.push(k); labels.push(shortDate(d)); total[k]=0; newV[k]=0; followV[k]=0; }
     events.forEach(function(e){
       var k=e.date.toDateString();
       if(k in total){ total[k]++; if(e.isFollowUp) followV[k]++; else newV[k]++; }
+    });
+  } else if(mode === 'byMonth'){
+    var year = selectedMonth.year, mIdx = selectedMonth.month;
+    var daysInMonth = new Date(year, mIdx+1, 0).getDate();
+    for(var day=1; day<=daysInMonth; day++){
+      var dd = new Date(year, mIdx, day);
+      var k2 = dd.toDateString();
+      keys.push(k2); labels.push(String(day)); total[k2]=0; newV[k2]=0; followV[k2]=0;
+    }
+    events.forEach(function(e){
+      var k2 = e.date.toDateString();
+      if(k2 in total){ total[k2]++; if(e.isFollowUp) followV[k2]++; else newV[k2]++; }
     });
   } else {
     var start = seasonStart(today);
@@ -894,7 +914,7 @@ function renderTrendChart(m){
       ? 'Using the Visit Log — repeat visits to the same account are counted.'
       : 'Using account snapshots — connect the Visit Log tab to count repeat visits.';
   }
-  var bucket = buildTrendBuckets(events, state.trendRange, m.today);
+  var bucket = buildTrendBuckets(events, state.trendRange, m.today, state.selectedMonth);
   var ctx = document.getElementById('trendChart').getContext('2d');
   charts.trend = new Chart(ctx, {
     type: 'bar',
@@ -1169,8 +1189,14 @@ document.querySelectorAll('.panel-head .tabs .tab-btn').forEach(function(btn){
     document.querySelectorAll('.panel-head .tabs .tab-btn').forEach(function(b){ b.classList.remove('active'); });
     btn.classList.add('active');
     state.trendRange = btn.getAttribute('data-range');
+    document.getElementById('monthPicker').style.display = (state.trendRange === 'byMonth') ? '' : 'none';
     if(state.lastMetrics) renderTrendChart(state.lastMetrics);
   });
+});
+
+document.getElementById('monthPicker').addEventListener('change', function(e){
+  state.selectedMonth.month = parseInt(e.target.value, 10);
+  if(state.lastMetrics) renderTrendChart(state.lastMetrics);
 });
 
 document.getElementById('toggleTotal').addEventListener('change', function(e){
@@ -1203,6 +1229,11 @@ var PLANOGRAM_GID = "1451909011";
 var VISIT_LOG_GID = "608946915";
 
 (async function init(){
+  var today = new Date();
+  var clampedMonth = Math.min(Math.max(today.getMonth(), 8), 11); // clamp into Sep(8)–Dec(11)
+  state.selectedMonth = { year: seasonStart(today).getFullYear(), month: clampedMonth };
+  document.getElementById('monthPicker').value = String(clampedMonth);
+
   setRows(window.__SEED_DATA__.map(finalizeRow), { sample:true });
   if(window.__SEED_VISIT_LOG__ && window.__SEED_VISIT_LOG__.length){
     var seedLog = window.__SEED_VISIT_LOG__.map(finalizeSeedVisitLogRow).filter(function(r){ return r.date && r.company; });
