@@ -296,7 +296,7 @@ footer a{color:var(--teal);cursor:pointer;text-decoration:underline;}
     <div class="panel-head">
       <div>
         <h2>Data errors <span class="pill badge" id="errorCountBadge" style="margin-left:6px;">0</span></h2>
-        <div class="panel-sub" style="margin-left:15px;">Automated checks across the Planogram and Visit Log sheets</div>
+        <div class="panel-sub" style="margin-left:15px;">Automated checks across the account sheet and Visit Log</div>
       </div>
     </div>
     <div class="error-list" id="errorList"></div>
@@ -723,7 +723,7 @@ function computeDataErrors(rows, visitLog){
       errors.push({
         type: 'Status mismatch',
         company: planCompanyDisplay[key],
-        detail: 'Planogram says "' + planStatus + '", latest Visit Log entry (' + fullDate(latestLogEntry[key].date) + ') says "' + logStatus + '"'
+        detail: 'Account sheet says "' + planStatus + '", latest Visit Log entry (' + fullDate(latestLogEntry[key].date) + ') says "' + logStatus + '"'
       });
     }
   });
@@ -731,7 +731,7 @@ function computeDataErrors(rows, visitLog){
   // 2. Unrecognized status text (typos / non-standard values), checked on both sheets
   rows.forEach(function(r){
     if(r.status && !isRecognizedStatus(r.status)){
-      errors.push({ type:'Unrecognized status', company: r.company || '(no name)', detail: 'Planogram status "' + r.status + '" doesn\'t match the standard list' });
+      errors.push({ type:'Unrecognized status', company: r.company || '(no name)', detail: 'Account sheet status "' + r.status + '" doesn\'t match the standard list' });
     }
   });
   visitLog.forEach(function(r){
@@ -747,7 +747,7 @@ function computeDataErrors(rows, visitLog){
     if(!seenLogCompany[key]){
       seenLogCompany[key] = true;
       if(!planCompanyDisplay[key]){
-        errors.push({ type:'Unknown company', company: r.company, detail: 'Appears in the Visit Log but not found in the Planogram account list — check for a typo' });
+        errors.push({ type:'Unknown company', company: r.company, detail: 'Appears in the Visit Log but not found in the account list — check for a typo' });
       }
     }
   });
@@ -779,7 +779,7 @@ function computeDataErrors(rows, visitLog){
         var key = r.company.trim().toLowerCase();
         var dates = logDatesByCompany[key];
         if(!dates || !dates[r.visitDate.toDateString()]){
-          errors.push({ type:'Missing visit log entry', company: r.company, detail: 'Planogram shows a visit on ' + fullDate(r.visitDate) + ' but there\'s no matching row in the Visit Log' });
+          errors.push({ type:'Missing visit log entry', company: r.company, detail: 'Account sheet shows a visit on ' + fullDate(r.visitDate) + ' but there\'s no matching row in the Visit Log' });
         }
       }
     });
@@ -800,7 +800,7 @@ function computeDataErrors(rows, visitLog){
   if(dupNames.length){
     errors.push({
       type: 'Duplicate companies',
-      company: dupNames.length + ' compan' + (dupNames.length === 1 ? 'y' : 'ies') + ' appear more than once in Planogram',
+      company: dupNames.length + ' compan' + (dupNames.length === 1 ? 'y' : 'ies') + ' appear more than once in the account sheet',
       detail: dupNames.join(', ')
     });
   }
@@ -970,7 +970,7 @@ function renderDataErrors(errors){
     badge.className = 'pill badge ' + (errors.length ? 'red' : 'green');
   }
   if(!errors.length){
-    el.innerHTML = '<div class="empty-state">No data issues found — Planogram and Visit Log look consistent.</div>';
+    el.innerHTML = '<div class="empty-state">No data issues found — the account sheet and Visit Log look consistent.</div>';
     return;
   }
   el.innerHTML = errors.map(function(er){
